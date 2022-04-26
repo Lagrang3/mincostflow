@@ -89,21 +89,34 @@ namespace ln
         {
         }
         
+        bool is_connected(int v) const
+        {
+            return distance.at(v)<INF;
+        }
+        
+        bool has_root()const
+        {
+            return root>=0;
+        }
+       
         auto find_path(int v) const
         {
-            if(root<0)
+            if(! has_root())
                 throw std::runtime_error("find_path: root is not set");
             
+            if(! is_connected(v))
+                throw std::runtime_error("find_path: v is not connected to the root");
+            
+            if(parent_edge.at(v)<0 || distance.at(v)==INF) 
+                // I hope this was c++20, I could use std::format
+                throw std::runtime_error("find_path: ");
+                
             std::vector<int> path;
             
             if(v==root)
             // we are already there
                 return path;
             
-            if(parent_edge.at(v)<0 || distance.at(v)==INF) 
-                // I hope this was c++20, I could use std::format
-                // throw std::runtime_error("find_path: v is not connected to root");
-                return path;
                 
             while(v!=root)
             {
