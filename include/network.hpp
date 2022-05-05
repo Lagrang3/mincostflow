@@ -10,6 +10,14 @@ namespace ln
 {
     static constexpr int INF = std::numeric_limits<int>::max();
     
+    inline long long int lower_bound_power2(long long int n)
+    {
+        if(n<=2) return n;
+        while(n != (n & -n))
+            n -= (n & -n);
+        return n;
+    }
+    
     class digraph
     {
         std::vector< std::pair<int,int> > Edges;
@@ -328,11 +336,11 @@ namespace ln
                     {
                         return residual_cap.at(e)>0 && admissible(e);
                     });
+                
+                if(!bfs.is_connected(Dest))
+                    break;
                     
                 auto path = bfs.find_path(Dest);
-                    
-                if(path.empty())
-                    break;
                     
                 int k = Flow_demand;
                 for(auto e : path)
@@ -365,6 +373,70 @@ namespace ln
             int Flow_demand=INF)
         {
             return augmenting_path(Source,Dest,Flow_demand,[](int e){return true;});
+        }
+    };
+    
+    class network_flow_capScaling : public network_flow_solver
+    {
+        public:
+        network_flow_capScaling(const digraph& in_graph):
+            network_flow_solver{in_graph}
+        {}
+        
+        template<class condition_t>
+        int augmenting_path(
+            const int Source, const int Dest,
+            condition_t admissible)
+        // augmenting path with capacity scaling
+        {
+            int sent=0;
+            shortest_path_bfs bfs(Graph);
+            std::vector<int> weight(Graph.n_edges(),1);
+            
+            long long int cap_flow = 1;
+            for(int e : Graph.out_edges(Source))
+                cap_flow += residual_cap.at(e);
+            
+            
+            cap_flow = lower_bound_power2(cap_flow);
+            
+            for(;cap_flow>0;)
+            {   
+                bfs(Source,weight,
+                    // edge is valid if
+                    [this,admissible,cap_flow](int e)
+                    {
+                        return residual_cap.at(e)>=cap_flow && admissible(e);
+                    });
+                
+                if(!bfs.is_connected(Dest))
+                {
+                    cap_flow /= 2;
+                    continue;
+                }
+                auto path = bfs.find_path(Dest);
+                
+                for(auto e: path)
+                {
+                    residual_cap[e] -= cap_flow;
+                    residual_cap[dual(e)] += cap_flow;
+                } 
+                sent += cap_flow;
+            }
+            return sent;
+        }
+        
+        template<class condition_t>
+        int send(
+            const int Source, const int Dest,
+            condition_t admissible)
+        {
+            return augmenting_path(Source,Dest,admissible);
+        }
+        int send(
+            const int Source, const int Dest)
+        {
+            return augmenting_path(Source,Dest,[](int e){return true;});
         }
     };
     
