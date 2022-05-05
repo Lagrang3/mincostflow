@@ -84,8 +84,8 @@ namespace ln
         
         shortest_path_tree(const digraph& graph):
             Graph{graph},
-            distance(Graph.n_edges(),INF),
-            parent_edge(Graph.n_edges(),-1)
+            distance(Graph.n_vertex(),INF),
+            parent_edge(Graph.n_vertex(),-1)
         {
         }
         
