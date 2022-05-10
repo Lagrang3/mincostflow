@@ -34,15 +34,18 @@ namespace ln
     */
     {
         
-        const digraph& Graph;
         int root{-1};
         std::vector<int> parent_edge;
+        
+        protected:
+        
+        const digraph& Graph;
         
         public:
         
         shortest_path_tree(const digraph& graph):
-            Graph{graph},
-            parent_edge(Graph.n_vertex(),-1)
+            parent_edge(graph.n_vertex(),-1),
+            Graph{graph}
         {
         }
         
@@ -77,7 +80,14 @@ namespace ln
         bool has_parent(int v)const
         // O(1)
         {
+            // assert(v>=0 && v<parent_edge.size());
             return parent_edge.at(v)>=0;
+        }
+        
+        bool is_connected(int v)const
+        // O(1)
+        {
+            return v==root || parent_edge.at(v)>=0;
         }
         
         void set_parent(int b, int e)
@@ -88,13 +98,15 @@ namespace ln
             
             
             int a = Graph.from_node(e);
+            //assert(a>=0 && a<Graph.n_vertex());
+            //assert(b>=0 && b<Graph.n_vertex());
+            //assert(e>=0 && e<Graph.n_edges());
+            
             if( (!has_parent(a)) && a!=root)
                 throw std::runtime_error("set_parent: parent node is not connected");
             
-            if(has_parent(b)) 
-            // weaker but less expensive than
             // if (a is in the subtree rooted at b) throw ...;
-                throw std::runtime_error("set_parent: node is already connected");
+            //    throw std::runtime_error("set_parent: node is already connected");
             
             parent_edge.at(b)=e;
         }
@@ -141,7 +153,7 @@ namespace ln
         
         shortest_path_bfs(const digraph& graph):
             shortest_path_tree{graph},
-            distance(Graph.n_vertex());
+            distance(Graph.n_vertex())
         {}
         
         template<class condition_t>
@@ -199,6 +211,16 @@ namespace ln
             distance(Graph.n_vertex())
         {}
         
+        auto get_distance(int v)const
+        // O(1)
+        {
+            if(! is_connected(v))
+                throw std::runtime_error("shortest_path_dijkstra::get_distance "
+                "node is disconnected");
+            
+            return distance.at(v);
+        }
+        
         template<class condition_t>
         auto operator() (
             const int Source,
@@ -217,6 +239,7 @@ namespace ln
             set_root(Source);
             
             const int r = get_root();
+            // assert(r>=0 && r<distance.size());
             distance.at(r) = 0;
             std::priority_queue< 
                 std::pair<int,int>, 
@@ -233,7 +256,9 @@ namespace ln
                 for(int e: Graph.out_edges(a))
                 if( valid_edge(e) ) 
                 {
+                    // assert(e>=0 && e<Graph.n_edges());
                     auto b = Graph.to_node(e);
+                    // assert(b>=0 && b<Graph.n_vertex());
                     
                     int dnew = dist + weight.at(e);
                     if(distance.at(b)>dnew)
