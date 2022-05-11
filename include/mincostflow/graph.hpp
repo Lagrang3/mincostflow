@@ -15,13 +15,13 @@ namespace ln
     */
     {
         std::vector< std::pair<int,int> > Edges;
-        const int N_vertex;
+        const std::size_t N_vertex;
         
         std::vector< std::vector<int> > In;
         std::vector< std::vector<int> > Out;
         
         public:
-        digraph(int N):
+        digraph(std::size_t N):
             N_vertex{N},
             In(N),Out(N)
         {}
@@ -36,11 +36,11 @@ namespace ln
             return e;
         }
         
-        int n_vertex() const 
+        auto n_vertex() const 
         {
             return N_vertex;
         }
-        int n_edges() const
+        auto n_edges() const
         {
             return Edges.size();
         }

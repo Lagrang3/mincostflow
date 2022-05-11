@@ -3,7 +3,7 @@
 #include "mincostflow/graph.hpp"
 #include "mincostflow/paths.hpp"
 #include <iostream>
-// runtime 0.18s
+// runtime 0.54s
 
 int main()
 {
@@ -25,7 +25,7 @@ int main()
             weights.at(e) = w;
         }
         
-        ln::shortest_path_dijkstra solver(Graph);
+        ln::shortest_path_bfs_weigthed solver(Graph);
         solver(S,weights,[](int e){return true;});
         
         for(int v;Q--;)
