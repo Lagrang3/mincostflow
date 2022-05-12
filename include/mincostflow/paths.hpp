@@ -193,6 +193,76 @@ namespace ln
         }
     };
     
+    class shortest_path_bfs_weigthed : public shortest_path_tree
+    /*
+        Represents: shortest path label-correcting FIFO
+        Invariant:
+        
+        User interface: 
+        Complexity:
+    */
+    {
+        std::vector<int> distance;
+        public:
+        
+        shortest_path_bfs_weigthed(const digraph& graph):
+            shortest_path_tree{graph},
+            distance(Graph.n_vertex())
+        {}
+        
+        auto get_distance(int v)const
+        // O(1)
+        {
+            if(! is_connected(v))
+                throw std::runtime_error("shortest_path_bfs_weigthed::get_distance "
+                "node is disconnected");
+            
+            return distance.at(v);
+        }
+        
+        template<class condition_t>
+        auto operator() (
+            const int Source,
+            const std::vector<int>& weight,
+            condition_t valid_edge)
+        // BFS shortest path
+        // each call resets the state of the tree and distances
+        // O(?)
+        {
+            if(weight.size()!=Graph.n_edges())
+                throw std::runtime_error(
+                    "shortest_path_bfs_weigthed: operator() : weight.size() different"
+                    " from the number of edges");
+            std::fill(distance.begin(),distance.end(),INF);
+            
+            set_root(Source);
+            std::queue<int> q;
+            distance.at(get_root()) = 0;
+            q.push(get_root());
+            
+            while(!q.empty())
+            {
+                auto a = q.front();
+                q.pop();
+                
+                for(int e: Graph.out_edges(a))
+                if( valid_edge(e) ) 
+                {
+                    // assert(distance[a]!=INF);
+                    auto b = Graph.to_node(e);
+                    const int dnew = distance.at(a)+weight.at(e);
+                    
+                    if(distance[b]==INF || distance[b]>dnew)
+                    {
+                        distance[b] = dnew;
+                        set_parent(b,e);
+                        q.push(b);
+                    }
+                }
+            }
+        }
+    };
+    
     class shortest_path_BellmanFord : public shortest_path_tree
     /*
         Represents: shortest path using Bellman-Ford
@@ -220,11 +290,6 @@ namespace ln
             return distance.at(v);
         }
         
-        bool is_infinity(int v)const
-        {
-            return distance.at(v)==-INF;
-        }
-        
         template<class condition_t>
         auto operator() (
             const int Source,
@@ -243,7 +308,7 @@ namespace ln
             set_root(Source);
             distance.at(get_root()) = 0;
             
-            for(int i=1;i<Graph.n_vertex();++i)
+            for(int i=0;i<Graph.n_vertex();++i)
             {
                 for(int e=0;e<Graph.n_edges();++e)
                 {
@@ -397,6 +462,13 @@ namespace ln
     //                 }
     //             }
     //         }
+    //         
+    //         // std::cerr << "distance vector: " ;
+    //         // for(auto d : distance)
+    //         // {
+    //         //     std::cerr << d << ' ';
+    //         // }
+    //         // std::cerr << '\n';
     //     }
     //     
     //     void reset()
