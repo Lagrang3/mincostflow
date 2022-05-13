@@ -310,6 +310,7 @@ namespace ln
             
             for(int i=0;i<Graph.n_vertex();++i)
             {
+                bool updates = false;
                 for(int e=0;e<Graph.n_edges();++e)
                 {
                     const auto [a,b] = Graph.get_edge(e);
@@ -321,8 +322,11 @@ namespace ln
                     {
                         distance[b]=dnew;
                         set_parent(b,e);
+                        updates = true;
                     }
                 }
+                if(! updates)
+                    break;
             }
             // check for negative cycles
         }
