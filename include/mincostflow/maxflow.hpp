@@ -64,21 +64,17 @@ namespace ln
         }
     };
     
-    class network_flow_shortest_path : public network_flow_solver
+    template<typename path_solver_type>
+    class maxflow_augmenting_path : public network_flow_solver
     {
-        public:
-        network_flow_shortest_path(const digraph& in_graph):
-            network_flow_solver{in_graph}
-        {}
         
         template<class condition_t>
-        int augmenting_path(
+        int execute(
             const int Source, const int Dest,
-            condition_t admissible)
-        // augmenting path
+            condition_t valid_edge)
         {
             int sent=0;
-            shortest_path_label search_algo(Graph,Source,Dest);
+            path_solver_type path_solver(Graph,Source,Dest);
             
             //int cycle=0;
             while(1)
@@ -87,14 +83,14 @@ namespace ln
                 // std::cerr << "augmenting path cycle: " << cycle << '\n';
                 // std::cerr << "flow sent: " << sent << '\n';
             
-                search_algo(
+                path_solver(
                     // edge is valid if
-                    [this,admissible](int e)
+                    [this,valid_edge](int e)
                     {
-                        return residual_cap.at(e)>0 && admissible(e);
+                        return residual_cap.at(e)>0 && valid_edge(e);
                     });
                 
-                auto path = search_algo.find_path(Dest);
+                auto path = path_solver.find_path(Dest);
                 
                 if(path.empty())
                     break;
@@ -116,17 +112,22 @@ namespace ln
             return sent;
         }
         
+        public:
+        maxflow_augmenting_path(const digraph& in_graph):
+            network_flow_solver{in_graph}
+        {}
+        
         template<class condition_t>
-        int send(
+        int solve(
             const int Source, const int Dest,
             condition_t admissible)
         {
-            return augmenting_path(Source,Dest,admissible);
+            return execute(Source,Dest,admissible);
         }
-        int send(
+        int solve(
             const int Source, const int Dest)
         {
-            return augmenting_path(Source,Dest,[](int e){return true;});
+            return execute(Source,Dest,[](int e){return true;});
         }
         
     };
