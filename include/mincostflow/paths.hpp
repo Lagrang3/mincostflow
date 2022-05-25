@@ -7,6 +7,8 @@
 #include <vector>
 #include <cassert>
 
+#include <mincostflow/graph.hpp>
+
 namespace ln
 {
     inline long long int lower_bound_power2(long long int n)
@@ -422,122 +424,122 @@ namespace ln
     };
     
    
-    class shortest_path_label : public shortest_path_tree
-    /*
-        Represents: shortest path with labeling
-        Invariant:
-        
-        User interface: 
-        Complexity:
-    */
-    {
-        const int mySource,myDest;
-        public:
-        
-        shortest_path_label(const digraph& graph,int Source, int Dest):
-            shortest_path_tree{graph},
-            mySource{Source},
-            myDest{Dest}
-        {
-            std::fill(distance.begin(),distance.end(),INF);
-            std::fill(parent_edge.begin(),parent_edge.end(),-1);
-            root = mySource;
-        }
-        template<class condition_t>
-        void initialize (
-            condition_t valid_edge)
-        {
-            std::queue<int> q;
-            
-            distance.at(myDest)=0;
-            q.push(myDest);
-            
-            while(!q.empty())
-            {
-                auto n = q.front();
-                q.pop();
-                
-                for(int e: Graph.in_edges(n))
-                if( valid_edge(e) ) 
-                {
-                    // assert b==n
-                    auto [a,b] = Graph.get_edge(e);
-                    int dnew = distance[b] + 1;
-                    
-                    if(distance[a]==INF || distance[a]>dnew)
-                    {
-                        distance[a] = dnew;
-                        q.push(a);
-                    }
-                }
-            }
-            
-            // std::cerr << "distance vector: " ;
-            // for(auto d : distance)
-            // {
-            //     std::cerr << d << ' ';
-            // }
-            // std::cerr << '\n';
-        }
-        
-        void reset()
-        {
-            std::fill(distance.begin(),distance.end(),INF);
-        }
-        template<class condition_t>
-        auto operator() (
-            condition_t valid_edge)
-        {
-            if(distance.at(mySource)==INF)
-                initialize(valid_edge);
-            
-            // std::fill(parent_edge.begin(),parent_edge.end(),-1);
-            parent_edge.at(myDest)=-1;
-            
-            // int cycle = 0;
-            for(int current = mySource;
-                distance.at(mySource)<Graph.n_vertex() && current!=myDest;)
-            {
-                // cycle++;
-                // std::cerr << "advance-relabel: " << cycle << '\n';
-                // std::cerr << "current node: " << current << '\n';
-                // std::cerr << "distance(current): " << distance.at(current) << '\n';
-                // if(cycle>100) break;
-                
-               // advance
-               bool found_next=false;
-               for(int e : Graph.out_edges(current))
-               {
-                    int next = Graph.to_node(e);
-                    if(valid_edge(e) && distance.at(current)==distance.at(next)+1)
-                    {
-                        found_next = true;
-                        parent_edge.at(next) = e;
-                        current = next;
-                        break;
-                    }
-               }
-               if(found_next) continue; // advance success
-               
-               // relabel
-               int min_dist = Graph.n_vertex()+10;
-               for(int e : Graph.out_edges(current))
-               {
-                    int next = Graph.to_node(e);
-                    if(valid_edge(e))
-                    {
-                        min_dist= std::min(min_dist,distance.at(next));
-                    }
-               }
-               distance.at(current) = min_dist+1;
-               
-               // retreat
-               if(parent_edge.at(current)>=0)
-               {
-                    int e = parent_edge.at(current);
-                    current = Graph.from_node(e);
-               }
-            }
-        }
-    };
+    // class shortest_path_label : public shortest_path_tree
+    // /*
+    //     Represents: shortest path with labeling
+    //     Invariant:
+    //     
+    //     User interface: 
+    //     Complexity:
+    // */
+    // {
+    //     const int mySource,myDest;
+    //     public:
+    //     
+    //     shortest_path_label(const digraph& graph,int Source, int Dest):
+    //         shortest_path_tree{graph},
+    //         mySource{Source},
+    //         myDest{Dest}
+    //     {
+    //         std::fill(distance.begin(),distance.end(),INF);
+    //         std::fill(parent_edge.begin(),parent_edge.end(),-1);
+    //         root = mySource;
+    //     }
+    //     template<class condition_t>
+    //     void initialize (
+    //         condition_t valid_edge)
+    //     {
+    //         std::queue<int> q;
+    //         
+    //         distance.at(myDest)=0;
+    //         q.push(myDest);
+    //         
+    //         while(!q.empty())
+    //         {
+    //             auto n = q.front();
+    //             q.pop();
+    //             
+    //             for(int e: Graph.in_edges(n))
+    //             if( valid_edge(e) ) 
+    //             {
+    //                 // assert b==n
+    //                 auto [a,b] = Graph.get_edge(e);
+    //                 int dnew = distance[b] + 1;
+    //                 
+    //                 if(distance[a]==INF || distance[a]>dnew)
+    //                 {
+    //                     distance[a] = dnew;
+    //                     q.push(a);
+    //                 }
+    //             }
+    //         }
+    //         
+    //         // std::cerr << "distance vector: " ;
+    //         // for(auto d : distance)
+    //         // {
+    //         //     std::cerr << d << ' ';
+    //         // }
+    //         // std::cerr << '\n';
+    //     }
+    //     
+    //     void reset()
+    //     {
+    //         std::fill(distance.begin(),distance.end(),INF);
+    //     }
+    //     template<class condition_t>
+    //     auto operator() (
+    //         condition_t valid_edge)
+    //     {
+    //         if(distance.at(mySource)==INF)
+    //             initialize(valid_edge);
+    //         
+    //         // std::fill(parent_edge.begin(),parent_edge.end(),-1);
+    //         parent_edge.at(myDest)=-1;
+    //         
+    //         // int cycle = 0;
+    //         for(int current = mySource;
+    //             distance.at(mySource)<Graph.n_vertex() && current!=myDest;)
+    //         {
+    //             // cycle++;
+    //             // std::cerr << "advance-relabel: " << cycle << '\n';
+    //             // std::cerr << "current node: " << current << '\n';
+    //             // std::cerr << "distance(current): " << distance.at(current) << '\n';
+    //             // if(cycle>100) break;
+    //             
+    //            // advance
+    //            bool found_next=false;
+    //            for(int e : Graph.out_edges(current))
+    //            {
+    //                 int next = Graph.to_node(e);
+    //                 if(valid_edge(e) && distance.at(current)==distance.at(next)+1)
+    //                 {
+    //                     found_next = true;
+    //                     parent_edge.at(next) = e;
+    //                     current = next;
+    //                     break;
+    //                 }
+    //            }
+    //            if(found_next) continue; // advance success
+    //            
+    //            // relabel
+    //            int min_dist = Graph.n_vertex()+10;
+    //            for(int e : Graph.out_edges(current))
+    //            {
+    //                 int next = Graph.to_node(e);
+    //                 if(valid_edge(e))
+    //                 {
+    //                     min_dist= std::min(min_dist,distance.at(next));
+    //                 }
+    //            }
+    //            distance.at(current) = min_dist+1;
+    //            
+    //            // retreat
+    //            if(parent_edge.at(current)>=0)
+    //            {
+    //                 int e = parent_edge.at(current);
+    //                 current = Graph.from_node(e);
+    //            }
+    //         }
+    //     }
+    // };
 };
