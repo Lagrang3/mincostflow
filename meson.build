@@ -3,7 +3,7 @@ project('MinCostFlow','cpp',
         'warning_level=3',
         'debug=true',
         'optimization=3',
-        'c_std=c++17'])
+        'cpp_std=c++17'])
 
 subdir('include')
 
@@ -14,4 +14,5 @@ libmincostflow = library('mincostflow',
 
 install_headers(my_headers,subdir: 'mincostflow')
 
-#subdir('examples')
+subdir('test')
+subdir('examples')

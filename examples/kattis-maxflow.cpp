@@ -1,8 +1,15 @@
 // https://open.kattis.com/problems/maxflow
 
-#include "network.hpp"
+#include <mincostflow/graph.hpp>
+#include <mincostflow/shortestpath.hpp>
+#include <mincostflow/maxflow.hpp>
 #include <iostream>
-// runtime 0.19s
+
+// typedef ln::maxflow_augmenting_path<ln::pathSearch_BFS> maxflow_t; // 0.43s
+// typedef ln::maxflow_augmenting_path<ln::pathSearch_labeling> maxflow_t; // 0.14s
+// typedef ln::maxflow_scaling<ln::pathSearch_BFS> maxflow_t; // 0.15s
+typedef ln::maxflow_scaling<ln::pathSearch_labeling> maxflow_t; // 0.02s
+// typedef ln::maxflow_preflow maxflow_t;
 
 int main()
 {
@@ -20,10 +27,10 @@ int main()
         capacity[e] = c;
     }
     
-    ln::network_flow_PushRelabel f(G);
+    maxflow_t f(G);
     f.set_capacity(capacity);
     
-    const int max_flow = f.send(S,T);
+    const int max_flow = f.solve(S,T);
     int M_count  =0 ;
     for(int e=0;e<G.n_edges();++e)
     {
