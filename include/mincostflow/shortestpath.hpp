@@ -236,6 +236,8 @@ namespace ln
             std::queue<int> q;
             
             distance.at(last_dest)=0;
+            
+            // TODO: write a general purpose BFS label solver
             q.push(last_dest);
             
             while(!q.empty())

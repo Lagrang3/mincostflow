@@ -210,105 +210,134 @@ namespace ln
         
     };
     
-    // class maxflow_preflow : public network_flow_solver
-    // {
-    //     public:
-    //     maxflow_preflow(const digraph& in_graph):
-    //         network_flow_solver{in_graph}
-    //     {}
-    //     
-    //     template<class condition_t>
-    //     int push_relabel(
-    //         const int Source, const int Dest,
-    //         int Flow_demand,
-    //         condition_t admissible)
-    //     {
-    //         std::vector<int> height(Graph.n_vertex(),0);
-    //         std::vector<int> excess(Graph.n_vertex(),0);
-    //         std::queue<int> q;
-    //         
-    //         {
-    //             shortest_path_bfs bfs(Graph); 
-    //             bfs(Dest,w,[admissible](int e){ return admissible(e); });
-    //             height = std::move(bfs.distance);    
-    //         }
-    //         
-    //         auto push = [&](int e)
-    //         {
-    //             auto [a,b] = Graph.get_edge(e);
-    //             const int delta = std::min(excess[a],residual_cap.at(e));
-    //             residual_cap.at(e) -= delta;
-    //             residual_cap.at(dual(e)) += delta;
-    //             
-    //             assert(delta>=0);
-    //             
-    //             excess.at(a) -= delta;
-    //             excess.at(b) += delta;
-    //             
-    //             if(delta>0 && excess.at(b)==delta)
-    //                 q.push(b);
-    //         };
-    //         
-    //         auto relabel = [&](int v)
-    //         {
-    //             int hmin = INF;
-    //             for(int e : Graph.out_edges(v))
-    //                 if(admissible(e) && residual_cap.at(e)>0)
-    //                     hmin = std::min(hmin,height.at(Graph.to_node(e)));
-    //             if(hmin<INF)    
-    //                 height.at(v) = hmin+1;
-    //         };
-    //         
-    //         auto discharge = [&](int a)
-    //         {
-    //             while(true)
-    //             {
-    //                 for(int e : Graph.out_edges(a))
-    //                     if(admissible(e) && residual_cap.at(e)>0)
-    //                     {
-    //                         int b = Graph.to_node(e);
-    //                         if(height[a]== height[b]+1)
-    //                             push(e);
-    //                     }
-    //                 
-    //                 if(excess.at(a)==0)
-    //                     break;
-    //                 
-    //                 relabel(a);
-    //             }
-    //         };
-    //         
-    //         excess.at(Source) = Flow_demand;
-    //         height.at(Source) = Graph.n_vertex();
-    //         
-    //         for(int e : Graph.out_edges(Source))
-    //             if(admissible(e))
-    //                 push(e);
-    //         
-    //         while(!q.empty())
-    //         {
-    //             int a = q.front();
-    //             q.pop();
-    //             
-    //             if(a!=Dest && a!=Source)
-    //                 discharge(a);
-    //         }
-    //         return excess.at(Dest);
-    //     }
-    //     
-    //     template<class condition_t>
-    //     int send(
-    //         const int Source, const int Dest,
-    //         int Flow_demand, 
-    //         condition_t admissible)
-    //     {
-    //         return push_relabel(Source,Dest,Flow_demand,admissible);
-    //     }
-    //     int send(
-    //         const int Source, const int Dest,
-    //         int Flow_demand=INF)
-    //     {
-    //         return push_relabel(Source,Dest,Flow_demand,[](int e){return true;});
-    //     }
-    // };
+    class maxflow_preflow : public network_flow_solver
+    {
+        
+        std::vector<int> distance;
+        std::vector<int> excess;
+        
+        template<class condition_t>
+        void initialize_distance(
+            const int Dest,
+            condition_t valid_edge)
+        {
+            std::fill(distance.begin(),distance.end(),INF);
+            distance.at(Dest)=0;
+            
+            std::queue<int> q;
+            q.push(Dest);
+            
+            while(!q.empty())
+            {
+                auto n = q.front();
+                q.pop();
+                
+                for(int e: Graph.in_edges(n))
+                if( valid_edge(e) ) 
+                {
+                    // assert b==n
+                    auto [a,b] = Graph.get_edge(e);
+                    int dnew = distance[b] + 1;
+                    
+                    if(distance[a]==INF)
+                    {
+                        distance[a] = dnew;
+                        q.push(a);
+                    }
+                }
+            }
+        }
+        
+        template<class condition_t>
+        int execute(
+            const int Source, const int Dest,
+            condition_t valid_edge)
+        {
+            std::fill(excess.begin(),excess.end(),0);
+            
+            initialize_distance(Dest,valid_edge);
+            std::queue<int> q;
+            
+            auto push = [&](int e)
+            {
+                auto [a,b] = Graph.get_edge(e);
+                const int delta = std::min(excess[a],residual_cap.at(e));
+                residual_cap.at(e) -= delta;
+                residual_cap.at(dual(e)) += delta;
+                
+                assert(delta>=0);
+                
+                excess.at(a) -= delta;
+                excess.at(b) += delta;
+                
+                if(delta>0 && excess.at(b)==delta)
+                    q.push(b);
+            };
+            
+            auto relabel = [&](int v)
+            {
+                int hmin = INF;
+                for(int e : Graph.out_edges(v))
+                    if(valid_edge(e) && residual_cap.at(e)>0)
+                        hmin = std::min(hmin,distance.at(Graph.to_node(e)));
+                if(hmin<INF)    
+                    distance.at(v) = hmin+1;
+            };
+            
+            auto discharge = [&](int a)
+            {
+                while(true)
+                {
+                    for(int e : Graph.out_edges(a))
+                        if(valid_edge(e) && residual_cap.at(e)>0)
+                        {
+                            int b = Graph.to_node(e);
+                            if(distance[a]== distance[b]+1)
+                                push(e);
+                        }
+                    
+                    if(excess.at(a)==0)
+                        break;
+                    
+                    relabel(a);
+                }
+            };
+            
+            excess.at(Source) = INF;
+            distance.at(Source) = Graph.n_vertex();
+            
+            for(int e : Graph.out_edges(Source))
+                if(valid_edge(e))
+                    push(e);
+            
+            while(!q.empty())
+            {
+                int a = q.front();
+                q.pop();
+                
+                if(a!=Dest && a!=Source)
+                    discharge(a);
+            }
+            return excess.at(Dest);
+        }
+        public:
+        maxflow_preflow(const digraph& in_graph):
+            network_flow_solver{in_graph},
+            distance(Graph.n_vertex()),
+            excess(Graph.n_vertex())
+        {}
+        
+        template<class condition_t>
+        int solve(
+            const int Source, const int Dest,
+            condition_t admissible)
+        {
+            return execute(Source,Dest,admissible);
+        }
+        int solve(
+            const int Source, const int Dest)
+        {
+            return execute(Source,Dest,[](int){return true;});
+        }
+    };
 }

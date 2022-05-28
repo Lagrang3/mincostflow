@@ -6,10 +6,10 @@
 #include <iostream>
 
 // typedef ln::maxflow_augmenting_path<ln::pathSearch_BFS> maxflow_t; // 0.43s
-// typedef ln::maxflow_augmenting_path<ln::pathSearch_labeling> maxflow_t; // 0.14s
+// typedef ln::maxflow_augmenting_path<ln::pathSearch_labeling> maxflow_t; // 0.02s
 // typedef ln::maxflow_scaling<ln::pathSearch_BFS> maxflow_t; // 0.15s
 typedef ln::maxflow_scaling<ln::pathSearch_labeling> maxflow_t; // 0.02s
-// typedef ln::maxflow_preflow maxflow_t;
+// typedef ln::maxflow_preflow maxflow_t; // 0.20s
 
 int main()
 {
