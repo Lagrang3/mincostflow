@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mincostflow/graph.hpp>
+
 #include <iostream>
 #include <set>
 #include <algorithm>
@@ -7,7 +9,6 @@
 #include <vector>
 #include <cassert>
 
-#include <mincostflow/graph.hpp>
 
 namespace ln
 {
@@ -345,8 +346,8 @@ namespace ln
         Complexity: pseudo-polynomial
     */
     {
-        std::vector<int> distance;
         public:
+        std::vector<int> distance;
         
         shortestPath_FIFO(const digraph& graph):
             shortestPath_tree{graph},
@@ -421,8 +422,8 @@ namespace ln
     */
     {
         
-        std::vector<int> distance;
         public:
+        std::vector<int> distance;
         
         shortestPath_BellmanFord(const digraph& graph):
             shortestPath_tree{graph},
@@ -492,9 +493,9 @@ namespace ln
         Complexity: |E| + |V| log |V|
     */
     {
-        std::vector<int> distance;
         
         public:
+        std::vector<int> distance;
         
         shortestPath_Dijkstra(const digraph& graph):
             shortestPath_tree{graph},

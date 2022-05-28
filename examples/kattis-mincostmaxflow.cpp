@@ -2,9 +2,20 @@
 #include <mincostflow/mincostflow.hpp>
 #include <iostream>
 
-typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_FIFO> mincostflow_t; // 0.94s
+// typedef ln::maxflow_augmenting_path<ln::pathSearch_BFS> maxflow_t;
+// typedef ln::maxflow_augmenting_path<ln::pathSearch_labeling> maxflow_t;
+// typedef ln::maxflow_scaling<ln::pathSearch_BFS> maxflow_t;
+// typedef ln::maxflow_scaling<ln::pathSearch_labeling> maxflow_t;
+typedef ln::maxflow_preflow maxflow_t;
+
+// typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_FIFO> mincostflow_t; // 0.94s
 // typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_BellmanFord> mincostflow_t; // 1.98s
 // typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_Dijkstra> mincostflow_t; // expected failure
+
+// typedef ln::mincostflow_PrimalDual<ln::shortestPath_FIFO,maxflow_t> mincostflow_t; // 0.95s, 1.11s, 1.18s, 1.38s, TLE
+typedef ln::mincostflow_PrimalDual<ln::shortestPath_BellmanFord,maxflow_t>
+mincostflow_t; // 2.13s, 2.23s, 2.20s, 2.47s, TLE
+// typedef ln::mincostflow_PrimalDual<ln::shortestPath_Dijkstra,maxflow_t> mincostflow_t; // RTE
 
 int main()
 {
