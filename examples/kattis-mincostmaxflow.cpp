@@ -1,7 +1,10 @@
 // https://open.kattis.com/problems/mincostmaxflow
-#include "network.hpp"
+#include <mincostflow/mincostflow.hpp>
 #include <iostream>
-// runtime: 0.86s
+
+typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_FIFO> mincostflow_t; // 0.94s
+// typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_BellmanFord> mincostflow_t; // 1.98s
+// typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_Dijkstra> mincostflow_t; // expected failure
 
 int main()
 {
@@ -21,10 +24,10 @@ int main()
         weight[e] = w;
     }
     
-    ln::network_flow_cost_EdmondsKarp f(G);
+    mincostflow_t f(G);
     f.set_capacity(capacity);
     
-    auto Flow = f.send(S,T,weight);
+    auto Flow = f.solve(S,T,weight);
     long long Cost = 0;
     
     for(int e=0;e<M;++e)

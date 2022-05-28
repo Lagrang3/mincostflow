@@ -345,14 +345,11 @@ namespace ln
         Complexity: pseudo-polynomial
     */
     {
-        const int Src,Dst;
         std::vector<int> distance;
         public:
         
-        shortestPath_FIFO(const digraph& graph,const int Source, const int Dest):
+        shortestPath_FIFO(const digraph& graph):
             shortestPath_tree{graph},
-            Src{Source},
-            Dst{Dest},
             distance(Graph.n_vertex())
         {}
         
@@ -367,7 +364,8 @@ namespace ln
         }
         
         template<class condition_t>
-        auto operator() (
+        bool solve(
+            const int Source, const int Dest,
             const std::vector<int>& weight,
             condition_t valid_edge)
         // shortest path FIFO
@@ -381,7 +379,7 @@ namespace ln
                     " from the number of edges");
             std::fill(distance.begin(),distance.end(),INF);
             
-            set_root(Src);
+            set_root(Source);
             std::queue<int> q;
             distance.at(get_root()) = 0;
             q.push(get_root());
@@ -391,7 +389,7 @@ namespace ln
                 auto a = q.front();
                 q.pop();
                 
-                if(a==Dst)
+                if(a==Dest)
                     found=true;
                 
                 for(int e: Graph.out_edges(a))
@@ -463,6 +461,7 @@ namespace ln
             {
                 bool updates = false;
                 for(int e=0;e<Graph.n_edges();++e)
+                if(valid_edge(e))
                 {
                     const auto [a,b] = Graph.get_edge(e);
                     if(distance.at(a)==INF)

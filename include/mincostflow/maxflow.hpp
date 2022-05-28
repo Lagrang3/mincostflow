@@ -1,4 +1,6 @@
 #pragma once
+
+#include <mincostflow/shortestpath.hpp>
     
 namespace ln
 {
