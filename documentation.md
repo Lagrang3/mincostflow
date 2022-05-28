@@ -59,3 +59,10 @@ Ahuja figure 7.12.
 
 Min-Cost-Flow
 ===
+Min-cost-max-flow based on Edmonds-Karp augmenting path algorithm, it greedily
+searches for the smallest cost routes. The path optimizer could be any shortest
+path algorithm that deals with negative weights.
+```
+    template<typename path_optimizer_type>
+    class mincostflow_EdmondsKarp;
+```
