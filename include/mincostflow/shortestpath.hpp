@@ -511,12 +511,12 @@ namespace ln
             
             return distance.at(v);
         }
-        
         template<class condition_t>
         bool solve (
             const int Source, const int Dest,
             const std::vector<int>& weight,
-            condition_t valid_edge)
+            condition_t valid_edge,
+            bool prune=true)
         // Dijkstra algorithm 
         // precondition: doesnt work with negative weights!
         // O( |E|+|V| log |V| )
@@ -550,7 +550,7 @@ namespace ln
                 
                 visited[a]=true;
                 
-                if(a==Dest)
+                if(a==Dest && prune)
                     break;
                 
                 for(int e: Graph.out_edges(a))
@@ -559,6 +559,9 @@ namespace ln
                     // assert(e>=0 && e<Graph.n_edges());
                     auto b = Graph.to_node(e);
                     // assert(b>=0 && b<Graph.n_vertex());
+                    
+                    if(weight.at(e)<0)
+                        throw std::runtime_error("Dijkstra found a negative edge");
                     
                     int dnew = dist + weight.at(e);
                     if(distance.at(b)>dnew)

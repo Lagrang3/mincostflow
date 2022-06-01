@@ -105,6 +105,8 @@ namespace ln
             
             int sent =0 ;
             path_optimizer_type path_opt(Graph);
+            
+            // int cycle=0;
             while(true)
             {
                 bool found = path_opt.solve(
@@ -114,7 +116,8 @@ namespace ln
                     [this](int e) -> bool
                     {
                         return residual_cap.at(e)>0;
-                    });
+                    },
+                    /* prune =  */ false);
                     
                 if(!found)
                     break;
@@ -130,6 +133,7 @@ namespace ln
                         weight_ex[dual(e)] -= distance[a]-distance[b];
                     }
                 }
+                
                 
                 int F = maxflow_type::solve(
                     Source,Dest,
