@@ -66,3 +66,13 @@ path algorithm that deals with negative weights.
     template<typename path_optimizer_type>
     class mincostflow_EdmondsKarp;
 ```
+
+Min-cost-max-flow Primal Dual algorithm.
+It uses a potential function to set the edges costs to zero and it pushes flow
+along cost-zero edges.
+It is a template on a path optimizer and a maxflow engines.
+The path optimizer could be any shortest path algorithm including Dijkstra.
+```
+    template<typename path_optimizer_type, typename maxflow_type>
+    class mincostflow_PrimalDual;
+```
