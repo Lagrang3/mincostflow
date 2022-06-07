@@ -15,7 +15,7 @@ namespace ln
     */
     {
         std::vector< std::pair<int,int> > Edges;
-        const std::size_t N_vertex;
+        std::size_t N_vertex{0};
         
         std::vector< std::vector<int> > In;
         std::vector< std::vector<int> > Out;
@@ -25,6 +25,14 @@ namespace ln
             N_vertex{N},
             In(N),Out(N)
         {}
+        digraph(){}
+        
+        void add_vertex()
+        {
+            ++N_vertex;
+            In.emplace_back();
+            Out.emplace_back();
+        }
         
         int add_edge(int /* from */ a, int /* to */ b)
         {
