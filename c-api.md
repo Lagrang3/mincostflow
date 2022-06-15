@@ -38,10 +38,11 @@ int lngraph_numEdges(lngraph* g);
 No fail.
 
 
-Gets the list of edges sorted by their ids.
-`edgeID` needs to be allocated to hold at least as many elements as edges in the graph.
+Gets the list of edges sorted by their ids and their capacity and cost properties.
+`edgeID`, `capacity` and `cost` need to be allocated to hold at least as many elements as edges in
+the graph.
 ```
-int lngraph_edges(lngraph* g, int64_t * edgeID);
+int lngraph_edges(lngraph* g, int64_t * edgeID, int64_t *capacity, int64_t * cost);
 ```
 No fail. You may assume this always return `lngraph_SUCCESS`.
 
