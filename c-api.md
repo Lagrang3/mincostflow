@@ -69,22 +69,23 @@ No fail. You may assume this always return `lngraph_SUCCESS`.
 Min. Cost Flow solver
 ===
 
-Node demand and supply
+Node excess. A possitive value of the excess makes a node into a *source node*
+and a negative value makes it a *sink node*.
 ```
-int lngraph_setSupply(lngraph* g, const char* nodeID, int64_t supply);
+int lngraph_setExcess(lngraph* g, const char* nodeID, int64_t excess);
 ```
 If the node does not exist then it will be added automatically.
 Possible errors: a new node is failed to be added, in that case the returned value is `lngraph_FAIL`.
 Otherwise `lngraph_SUCCESS` is returned.
 
 
-Sets the supply of every known node to 0.
+Sets the excess of every known node to 0.
 ```
-int lngraph_resetSupply(lngraph* g);
+int lngraph_resetExcess(lngraph* g);
 ```
 No fail. You may assume this always return `lngraph_SUCCESS`.
 
-Solve the MCF problem with the supply/demand previously set and returns the status.
+Solve the MCF problem with the excess previously set and returns the status.
 ```
 int lngraph_mincostflow(lngraph * g,int64_t * flow);
 ```
@@ -96,11 +97,12 @@ the return value is `lngraph_FAIL`.
 Otherwise `lngraph_SUCCESS` is returned.
 
 Solve the MCF problem where there is only a source and a sink node.
-The return value and `flow` follows the same as a call to `lngraph_mincostflow`.
+This is equivalent to setting the excess of the `source` to the value `excess`
+and the excess of the `sink` to `-excess` and then calling `lngraph_mincostflow`.
 ```
 int lngraph_mincostflow_singleSinkSource(lngraph * g, 
                                          const char* source, 
                                          const char* sink,
-                                         int64_t supply,
+                                         int64_t excess,
                                          int64_t * flow);
 ```
