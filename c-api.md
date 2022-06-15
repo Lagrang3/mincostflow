@@ -84,7 +84,7 @@ int lngraph_resetSupply(lngraph* g);
 ```
 No fail. You may assume this always return `lngraph_SUCCESS`.
 
-Solve the MCF problem and returns the status.
+Solve the MCF problem with the supply/demand previously set and returns the status.
 ```
 int lngraph_mincostflow(lngraph * g,int64_t * flow);
 ```
@@ -95,4 +95,12 @@ Possible errors: it was not possible to find a feasible flow that satisfy the pr
 the return value is `lngraph_FAIL`. 
 Otherwise `lngraph_SUCCESS` is returned.
 
-
+Solve the MCF problem where there is only a source and a sink node.
+The return value and `flow` follows the same as a call to `lngraph_mincostflow`.
+```
+int lngraph_mincostflow_singleSinkSource(lngraph * g, 
+                                         const char* source, 
+                                         const char* sink,
+                                         int64_t supply,
+                                         int64_t * flow);
+```
