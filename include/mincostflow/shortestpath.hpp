@@ -337,7 +337,8 @@ namespace ln
         // TODO: optimize page 219 Ahuja
     };
     
-    class shortestPath_FIFO : public shortestPath_tree
+    template<typename T>
+    class shortestPath_FIFO : public digraph_types
     /*
         Represents: shortest path label-correcting FIFO
         Invariant:
@@ -347,68 +348,64 @@ namespace ln
     */
     {
         public:
-        std::vector<int> distance;
+        using value_type = T;
+        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
+        std::vector<value_type> distance;
+        std::vector<arc_pos_t>  parent;
         
-        shortestPath_FIFO(const digraph& graph):
-            shortestPath_tree{graph},
-            distance(Graph.n_vertex())
+        shortestPath_FIFO()
         {}
         
-        auto get_distance(int v)const
-        // O(1)
-        {
-            if(! is_connected(v))
-                throw std::runtime_error("shortest_path_bfs_weigthed::get_distance "
-                "node is disconnected");
-            
-            return distance.at(v);
-        }
-        
-        template<class condition_t>
-        bool solve(
-            const int Source, const int Dest,
-            const std::vector<int>& weight,
-            condition_t valid_edge)
+        template<typename graph_t, typename condition_t>
+        void solve(
+            const graph_t& g,
+            const node_pos_t Source,
+            const std::vector<value_type>& weight,
+            condition_t valid_arc)
         // shortest path FIFO
         // each call resets the state of the tree and distances
         // O( pseudo-polynomial )
         {
-            bool found=false;
-            if(weight.size()!=Graph.n_edges())
+            if(!g.is_valid(Source))
                 throw std::runtime_error(
-                    "shortest_path_bfs_weigthed: operator() : weight.size() different"
-                    " from the number of edges");
-            std::fill(distance.begin(),distance.end(),INF);
+                    "shortestPath_FIFO::solve source node is not valid");
             
-            set_root(Source);
-            std::queue<int> q;
-            distance.at(get_root()) = 0;
-            q.push(get_root());
+            const auto num_arcs = g.max_num_arcs();
+            const auto num_nodes = g.max_num_nodes();
+        
+            if(weight.size()<num_arcs)
+                throw std::runtime_error(
+                    "shortestPath_FIFO::solve weight does not map arc property");
+            
+            distance.resize(num_nodes);
+            parent.resize(num_nodes);
+            
+            std::fill(distance.begin(),distance.end(),INFINITY);
+            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
+            
+            std::queue<node_pos_t> q;
+            q.push(Source);
+            distance.at(Source.x)=0;
             
             while(!q.empty())
             {
-                auto a = q.front();
+                auto node = q.front();
                 q.pop();
                 
-                if(a==Dest)
-                    found=true;
-                
-                for(int e: Graph.out_edges(a))
-                if( valid_edge(e) ) 
+                for(auto e: g.out_arcs(node))
+                if( valid_arc(e) ) 
                 {
-                    // assert(distance[a]!=INF);
-                    auto b = Graph.to_node(e);
-                    const int dnew = distance.at(a)+weight.at(e);
+                    auto [a,b] = g.arc_ends(e);
+                    const value_type dnew = distance.at(a.x)+weight.at(e.x);
                     
-                    if(distance[b]==INF || distance[b]>dnew)
+                    if(distance.at(b.x)>dnew)
                     {
-                        distance[b] = dnew;
-                        set_parent(b,e);
+                        distance.at(b.x) = dnew;
+                        parent.at(b.x) = e;
                         q.push(b);
                     }
                 }
             }
-            return found;
         }
     };
     
@@ -571,6 +568,4 @@ namespace ln
             }
         }
     };
-    
-   
 }
