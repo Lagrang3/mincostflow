@@ -484,7 +484,8 @@ namespace ln
         }
     };
     
-    class shortestPath_Dijkstra : public shortestPath_tree
+    template<typename T>
+    class shortestPath_Dijkstra : public digraph_types
     /*
         Represents: shortest path with weights using Dijkstra
         Invariant:
@@ -493,85 +494,81 @@ namespace ln
         Complexity: |E| + |V| log |V|
     */
     {
-        bool var_prune{false};
         public:
-        std::vector<int> distance;
         
-        shortestPath_Dijkstra(const digraph& graph):
-            shortestPath_tree{graph},
-            distance(Graph.n_vertex())
+        using value_type = T;
+        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
+        std::vector<value_type> distance;
+        std::vector<arc_pos_t>  parent;
+        
+        
+        shortestPath_Dijkstra()
         {}
         
-        auto get_distance(int v)const
-        // O(1)
-        {
-            if(! is_connected(v))
-                throw std::runtime_error("shortest_path_dijkstra::get_distance "
-                "node is disconnected");
-            
-            return distance.at(v);
-        }
-        template<class condition_t>
-        bool solve (
-            const int Source, const int Dest,
-            const std::vector<int>& weight,
-            condition_t valid_edge)
+        template<typename graph_t, typename condition_t>
+        void solve (
+            const graph_t& g,
+            const node_pos_t Source,
+            const std::vector<value_type>& weight,
+            condition_t valid_arc)
         // Dijkstra algorithm 
         // precondition: doesnt work with negative weights!
         // O( |E|+|V| log |V| )
         {
-            if(weight.size()!=Graph.n_edges())
+            if(!g.is_valid(Source))
                 throw std::runtime_error(
-                    "shortest_path_dijkstra: operator() : weight.size() different"
-                    " from the number of edges");
+                    "shortestPath_Dijkstra::solve source node is not valid");
             
-            std::vector<bool> visited(Graph.n_vertex(),false);
-            std::fill(distance.begin(),distance.end(),INF);
-            set_root(Source);
+            const auto num_arcs = g.max_num_arcs();
+            const auto num_nodes = g.max_num_nodes();
+        
+            if(weight.size()<num_arcs)
+                throw std::runtime_error(
+                    "shortestPath_Dijkstra::solve weight does not map arc property");
             
-            const int r = get_root();
-            // assert(r>=0 && r<distance.size());
-            distance.at(r) = 0;
+            distance.resize(num_nodes);
+            parent.resize(num_nodes);
+            std::vector<bool> visited(num_nodes,false);
+            
+            std::fill(distance.begin(),distance.end(),INFINITY);
+            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
+            
+            distance.at(Source.x) = 0;
             std::priority_queue< 
-                std::pair<int,int>, 
-                std::vector< std::pair<int,int> >, 
-                std::greater<std::pair<int,int> > 
+                std::pair<value_type,node_pos_t>, 
+                std::vector< std::pair<value_type,node_pos_t> >, 
+                std::greater<std::pair<value_type,node_pos_t> > 
                 > q;
-            q.push( {0,r} );
+            q.push( {0,Source} );
             
             while(!q.empty())
             {
-                const auto [dist,a] = q.top();
+                const auto [dist,node] = q.top();
                 q.pop();
                 
-                if(visited.at(a))
+                if(visited.at(node.x))
                     continue;
                 
-                visited[a]=true;
+                visited[node.x]=true;
                 
-                if(a==Dest && var_prune)
-                    break;
-                
-                for(int e: Graph.out_edges(a))
-                if( valid_edge(e) ) 
+                for(auto e: g.out_arcs(node))
+                if( valid_arc(e) ) 
                 {
-                    // assert(e>=0 && e<Graph.n_edges());
-                    auto b = Graph.to_node(e);
-                    // assert(b>=0 && b<Graph.n_vertex());
+                    auto [a,b] = g.arc_ends(e);
                     
-                    if(weight.at(e)<0)
-                        throw std::runtime_error("Dijkstra found a negative edge");
+                    if(weight.at(e.x)<0)
+                        throw std::runtime_error(
+                            "shortestPath_Dijkstra::solve found a negative edge");
                     
-                    int dnew = dist + weight.at(e);
-                    if(distance.at(b)>dnew)
+                    value_type dnew = dist + weight.at(e.x);
+                    if(distance.at(b.x)>dnew)
                     {
-                        distance[b] = dnew;
-                        set_parent(b,e);
+                        distance[b.x] = dnew;
+                        parent[b.x] = e;
                         q.push({dnew,b});
                     }
                 }
             }
-            return visited.at(Dest);
         }
     };
     
