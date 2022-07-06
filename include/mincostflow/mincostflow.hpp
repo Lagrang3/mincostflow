@@ -116,8 +116,7 @@ namespace ln
                     [this](int e) -> bool
                     {
                         return residual_cap.at(e)>0;
-                    },
-                    /* prune =  */ false);
+                    });
                     
                 if(!found)
                     break;

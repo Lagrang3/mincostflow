@@ -493,7 +493,7 @@ namespace ln
         Complexity: |E| + |V| log |V|
     */
     {
-        
+        bool var_prune{false};
         public:
         std::vector<int> distance;
         
@@ -515,8 +515,7 @@ namespace ln
         bool solve (
             const int Source, const int Dest,
             const std::vector<int>& weight,
-            condition_t valid_edge,
-            bool prune=true)
+            condition_t valid_edge)
         // Dijkstra algorithm 
         // precondition: doesnt work with negative weights!
         // O( |E|+|V| log |V| )
@@ -550,7 +549,7 @@ namespace ln
                 
                 visited[a]=true;
                 
-                if(a==Dest && prune)
+                if(a==Dest && var_prune)
                     break;
                 
                 for(int e: Graph.out_edges(a))
