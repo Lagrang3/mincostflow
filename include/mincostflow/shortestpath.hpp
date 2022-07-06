@@ -409,7 +409,8 @@ namespace ln
         }
     };
     
-    class shortestPath_BellmanFord : public shortestPath_tree
+    template<typename T>
+    class shortestPath_BellmanFord : public digraph_types
     /*
         Represents: shortest path using Bellman-Ford
         Invariant:
@@ -418,58 +419,61 @@ namespace ln
         Complexity: |V| |E|
     */
     {
-        
         public:
-        std::vector<int> distance;
+        using value_type = T;
+        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
         
-        shortestPath_BellmanFord(const digraph& graph):
-            shortestPath_tree{graph},
-            distance(Graph.n_vertex())
+        std::vector<value_type> distance;
+        std::vector<arc_pos_t>  parent;
+        
+        shortestPath_BellmanFord()
         {}
         
-        auto get_distance(int v)const
-        // O(1)
-        {
-            if(! is_connected(v))
-                throw std::runtime_error("shortest_path_BellmanFord::get_distance "
-                "node is disconnected");
-            
-            return distance.at(v);
-        }
-        
-        template<class condition_t>
-        bool solve (
-            const int Source, const int Dest,
-            const std::vector<int>& weight,
-            condition_t valid_edge)
+        template<typename graph_t, typename condition_t>
+        void solve (
+            const graph_t& g,
+            const node_pos_t Source,
+            const std::vector<value_type>& weight,
+            condition_t valid_arc)
         // shortest path Bellman-Ford
         // each call resets the state of the tree and distances
         // O(|V||E|)
         {
-            if(weight.size()!=Graph.n_edges())
+            if(!g.is_valid(Source))
                 throw std::runtime_error(
-                    "shortest_path_BellmanFord: operator() : weight.size() different"
-                    " from the number of edges");
-            std::fill(distance.begin(),distance.end(),INF);
+                    "shortestPath_BellmanFord::solve source node is not valid");
             
-            set_root(Source);
-            distance.at(get_root()) = 0;
+            const auto num_arcs = g.max_num_arcs();
+            const auto num_nodes = g.max_num_nodes();
+        
+            if(weight.size()<num_arcs)
+                throw std::runtime_error(
+                    "shortestPath_BellmanFord::solve weight does not map arc property");
             
-            for(int i=0;i<Graph.n_vertex();++i)
+            distance.resize(num_nodes);
+            parent.resize(num_nodes);
+            
+            std::fill(distance.begin(),distance.end(),INFINITY);
+            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
+            
+            distance.at(Source.x) = 0;
+            
+            // TODO: use here the right number of nodes
+            for(int i=0;i<num_nodes;++i)
             {
                 bool updates = false;
-                for(int e=0;e<Graph.n_edges();++e)
-                if(valid_edge(e))
+                for(auto e: g.arcs())
+                if(valid_arc(e))
                 {
-                    const auto [a,b] = Graph.get_edge(e);
-                    if(distance.at(a)==INF)
+                    const auto [a,b] = g.arc_ends(e);
+                    if(distance.at(a.x)==INFINITY)
                         continue;
                     
-                    const auto dnew = distance[a]+weight.at(e);
-                    if(distance.at(b)==INF || distance.at(b)>dnew)
+                    const value_type dnew = distance[a.x]+weight.at(e.x);
+                    if(distance.at(b.x)>dnew)
                     {
-                        distance[b]=dnew;
-                        set_parent(b,e);
+                        distance[b.x]=dnew;
+                        parent.at(b.x) = e;
                         updates = true;
                     }
                 }
@@ -477,7 +481,6 @@ namespace ln
                     break;
             }
             // TODO: check for negative cycles
-            return distance.at(Dest)<INF;
         }
     };
     
