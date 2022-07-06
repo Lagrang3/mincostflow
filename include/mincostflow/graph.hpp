@@ -186,6 +186,73 @@ namespace ln
         
         
         public:
+        
+        class const_arc_iterator
+        {
+            const digraph& my_graph;
+            arc_pos_t pos;
+            public:
+            
+            const_arc_iterator(const digraph& g, pos_type x):
+                my_graph{g},
+                pos{x}
+            {}
+            
+            const_arc_iterator& operator ++ ()
+            {
+                if(pos.x==NONE) return *this;
+                
+                ++pos.x;
+                
+                while(pos.x<my_graph.max_num_arcs() && !my_graph.is_valid(pos))
+                {
+                    pos.x ++ ;
+                }
+                
+                if(pos.x >= my_graph.max_num_arcs())
+                    pos.x = NONE;
+                
+                return *this;
+            }
+            
+            bool operator == (const const_arc_iterator& that)const
+            {
+                return pos.x == that.pos.x;
+            }
+            bool operator != (const const_arc_iterator& that)const
+            {
+                return pos.x!=that.pos.x;
+            }
+            
+            arc_pos_t operator * ()const
+            {
+                return pos;
+            }
+        };
+        class const_arc_container
+        {
+            const digraph& my_graph;
+            public:
+            const_arc_container(const digraph& g): my_graph{g}
+            {}
+            
+            const_arc_iterator begin()
+            {
+                const_arc_iterator it(my_graph,0);
+                if(!my_graph.is_valid(*it)) ++it;
+                return it;
+            }
+            const_arc_iterator end()
+            {
+                const_arc_iterator it(my_graph,NONE);
+                return it;
+            }
+        };
+        auto arcs()const
+        {
+            return const_arc_container{*this};
+        }
+        
         bool is_valid(arc_pos_t arc)const
         {
             return arc.x!=NONE && arc.x<arcs_vec.size() && arcs_vec.at(arc.x).is_valid();
