@@ -389,6 +389,18 @@ namespace ln
         }
         
         // translation 
+        node_id_t get_node_id(node_pos_t node)const
+        {
+            if(!is_valid(node))
+                throw std::runtime_error("digraph::get_node_id invalid node");
+            return nodes_ids.at(node.x);
+        }
+        arc_id_t get_arc_id(arc_pos_t arc)const
+        {
+            if(!is_valid(arc))
+                throw std::runtime_error("digraph::get_arc_id invalid arc");
+            return arcs_ids.at(arc.x);
+        }
         node_pos_t get_node(node_id_t id)const
         {
             node_pos_t node{NONE};
