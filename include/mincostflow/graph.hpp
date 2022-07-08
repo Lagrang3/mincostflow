@@ -258,6 +258,13 @@ namespace ln
                     "digraph::out_arcs invalid node");
             return my_nodes.at(node).out_arcs;
         }
+        const auto& in_arcs(node_pos_t node)const
+        {
+            if(!is_valid(node))
+                throw std::runtime_error(
+                    "digraph::in_arcs invalid node");
+            return my_nodes.at(node).in_arcs;
+        }
         
         arc_pos_t new_arc(node_pos_t a, node_pos_t b)
         {

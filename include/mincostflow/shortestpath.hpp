@@ -149,7 +149,8 @@ namespace ln
         }
     };
     
-    class pathSearch_labeling : public parent_structure, public distance_structure<int>
+    class pathSearch_labeling : public parent_structure, 
+                                public distance_structure<unsigned int>
     /*
         Represents: shortest path with labeling
         Invariant:
@@ -159,7 +160,7 @@ namespace ln
     */
     {
         public:
-        using value_type = int;
+        using value_type = distance_structure::value_type;
         using parent_structure::parent;
         using parent_structure::init;
         using distance_structure<value_type>::distance;
@@ -180,7 +181,7 @@ namespace ln
             dist_freq.resize(g.num_nodes()+1);
             std::fill(dist_freq.begin(),dist_freq.end(),0);
             
-            std::queue<int> q;
+            std::queue<node_pos_t> q;
             distance.at(last_dest)=0;
             
             // TODO: write a general purpose BFS label solver
@@ -195,7 +196,7 @@ namespace ln
                 if( valid_edge(e) ) 
                 {
                     auto [a,b] = g.arc_ends(e);
-                    int dnew = distance[b] + 1;
+                    value_type dnew = distance[b] + 1;
                     
                     if(distance[a]==INFINITY)
                     {
@@ -256,7 +257,7 @@ namespace ln
                if(found_next) continue; // advance success
                
                // relabel
-               int min_dist = g.num_nodes()+10;
+               value_type min_dist = g.num_nodes()+10;
                for(auto e : g.out_arcs(current))
                {
                     auto [x,next] = g.arc_ends(e);
@@ -266,8 +267,8 @@ namespace ln
                     }
                }
                {
-                    const int new_dist = min_dist+1;
-                    const int old_dist = distance.at(current);
+                    const value_type new_dist = min_dist+1;
+                    const value_type old_dist = distance.at(current);
                     distance.at(current) = new_dist;
                     if(new_dist<dist_freq.size())
                         dist_freq.at(new_dist)++;
