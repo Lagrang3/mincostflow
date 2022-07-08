@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mincostflow/vectorized_map.hpp>
+
 #include <stdexcept>
 #include <limits>
 #include <cassert>
@@ -8,6 +10,7 @@
 #include <set>
 #include <unordered_map>
 #include <algorithm>
+
 
 namespace ln
 {   
@@ -32,6 +35,21 @@ namespace ln
             {
                 return x==that.x;
             }
+            
+            operator pos_type() const
+            {
+                return x;
+            }
+            node_pos_t& operator++()
+            {
+                ++x;
+                return *this;
+            }
+            node_pos_t operator++(int)
+            {
+                ++x;
+                return node_pos_t{x-1};
+            }
         };
         struct arc_pos_t
         {
@@ -44,53 +62,31 @@ namespace ln
             {
                 return x==that.x;
             }
+            operator pos_type() const
+            {
+                return x;
+            }
+            arc_pos_t& operator++()
+            {
+                ++x;
+                return *this;
+            }
+            arc_pos_t operator++(int)
+            {
+                ++x;
+                return arc_pos_t{x-1};
+            }
         };
         
         struct arc_data_t
         {
             node_pos_t a{NONE},b{NONE};
             arc_pos_t dual{NONE};
-            
-            void clear()
-            {
-                a=b=node_pos_t{};
-                dual=arc_pos_t{};
-            }
-            
-            bool is_valid()const
-            {
-                return a.x!=NONE && b.x!=NONE;
-            }
-            void init(node_pos_t src, node_pos_t dst)
-            {
-                a = src;
-                b = dst;
-                dual = arc_pos_t{};
-            }
         };
         
         struct node_data_t
         {
-            bool is_valid_val{false};
             std::vector<arc_pos_t> out_arcs,in_arcs;
-            
-            void init()
-            {
-                is_valid_val = true;
-                in_arcs.clear();
-                out_arcs.clear();
-            }
-            
-            void clear()
-            {
-                is_valid_val=false;
-                out_arcs.clear();
-                in_arcs.clear();
-            }
-            bool is_valid()const
-            {
-                return is_valid_val;
-            }
             
             void rm_arc(arc_pos_t arc)
             {
@@ -116,6 +112,7 @@ namespace ln
             }
         };
     };
+    
     
     // TODO: template on custom allocator
     template<typename node_id_t, typename arc_id_t>
@@ -146,193 +143,111 @@ namespace ln
         for()
     */
     {
-        std::vector< arc_data_t > arcs_vec;
-        std::set< arc_pos_t > free_arcs;
+        vectorized_map<arc_pos_t,arc_data_t> my_arcs;
+        vectorized_map<node_pos_t,node_data_t> my_nodes;
+        
         std::unordered_map<arc_id_t,arc_pos_t> arcs_htable;
         std::vector<arc_id_t> arcs_ids;
+        std::vector<bool> arcs_ids_flag;
         
-        
-        std::vector< node_data_t > nodes_vec;
-        std::set< node_pos_t > free_nodes;
         std::unordered_map<node_id_t,node_pos_t> nodes_htable;
         std::vector<node_id_t> nodes_ids;
+        std::vector<bool> nodes_ids_flag;
             
-        void free_arc_space()
-        {
-            while(!arcs_vec.empty() && !arcs_vec.back().is_valid())
-            // eliminate unused arcs from the back of the buffer
-            {
-                auto arc = arc_pos_t{arcs_vec.size()-1};
-                assert(free_arcs.find(arc)!=free_arcs.end());
-                
-                free_arcs.erase(arc);
-                arcs_vec.pop_back();
-                arcs_ids.pop_back();
-            }
-        }
-        void free_node_space()
-        {
-            while(!nodes_vec.empty() && !nodes_vec.back().is_valid())
-            // eliminate unused nodes from the back of the buffer
-            {
-                auto node = node_pos_t{nodes_vec.size()-1};
-                assert(free_nodes.find(node)!=free_nodes.end());
-                
-                free_nodes.erase(node);
-                nodes_vec.pop_back();
-                nodes_ids.pop_back();
-            }
-        }
-        
-        
         public:
         
-        class const_arc_iterator
+        const auto& arcs()const
         {
-            const digraph& my_graph;
-            arc_pos_t pos;
-            public:
-            
-            const_arc_iterator(const digraph& g, pos_type x):
-                my_graph{g},
-                pos{x}
-            {}
-            
-            const_arc_iterator& operator ++ ()
-            {
-                if(pos.x==NONE) return *this;
-                
-                ++pos.x;
-                
-                while(pos.x<my_graph.max_num_arcs() && !my_graph.is_valid(pos))
-                {
-                    pos.x ++ ;
-                }
-                
-                if(pos.x >= my_graph.max_num_arcs())
-                    pos.x = NONE;
-                
-                return *this;
-            }
-            
-            bool operator == (const const_arc_iterator& that)const
-            {
-                return pos.x == that.pos.x;
-            }
-            bool operator != (const const_arc_iterator& that)const
-            {
-                return pos.x!=that.pos.x;
-            }
-            
-            arc_pos_t operator * ()const
-            {
-                return pos;
-            }
-        };
-        class const_arc_container
+            return my_arcs;
+        }
+        const auto& nodes()const
         {
-            const digraph& my_graph;
-            public:
-            const_arc_container(const digraph& g): my_graph{g}
-            {}
-            
-            const_arc_iterator begin()
-            {
-                const_arc_iterator it(my_graph,0);
-                if(!my_graph.is_valid(*it)) ++it;
-                return it;
-            }
-            const_arc_iterator end()
-            {
-                const_arc_iterator it(my_graph,NONE);
-                return it;
-            }
-        };
-        auto arcs()const
-        {
-            return const_arc_container{*this};
+            return my_nodes;
         }
         
         bool is_valid(arc_pos_t arc)const
         {
-            return arc.x!=NONE && arc.x<arcs_vec.size() && arcs_vec.at(arc.x).is_valid();
+            return my_arcs.is_valid(arc);
         }
         bool is_valid(node_pos_t node)const
         {
-            return node.x!=NONE && node.x<nodes_vec.size() && nodes_vec.at(node.x).is_valid();
+            return my_nodes.is_valid(node);
+        }
+        bool has_id(node_pos_t node)const
+        {
+            return nodes_ids_flag.at(node);
+        }
+        bool has_id(arc_pos_t arc)const
+        {
+            return arcs_ids_flag.at(arc);
         }
         
         auto arc_ends(arc_pos_t arc)const
         {
             return std::pair<node_pos_t,node_pos_t>{
-                arcs_vec.at(arc.x).a,
-                arcs_vec.at(arc.x).b
+                my_arcs.at(arc).a,
+                my_arcs.at(arc).b
                 };
         }
         arc_pos_t arc_dual(arc_pos_t arc)const
         {
-            return arcs_vec.at(arc.x).dual;
+            return my_arcs.at(arc).dual;
         }
         
-        void rm(arc_pos_t arc)
+        void erase(arc_pos_t arc)
         {
             if(! is_valid(arc))
                 return;
             
             auto [a,b] = arc_ends(arc);
             
-            nodes_vec.at(a.x).rm_arc(arc);
-            nodes_vec.at(b.x).rm_arc(arc);
+            my_nodes.at(a).rm_arc(arc);
+            my_nodes.at(b).rm_arc(arc);
             
-            auto id = arcs_ids.at(arc.x);
-            arcs_htable.erase(id);
-            arcs_vec.at(arc.x).clear();
-            free_arcs.insert(arc);
+            if(has_id(arc))
+            {
+                auto id = arcs_ids.at(arc);
+                arcs_htable.erase(id);
+            }
             
-            // done
-            free_arc_space();
+            my_arcs.erase(arc);
+            arcs_ids.resize(my_arcs.capacity());
+            arcs_ids_flag.resize(my_arcs.capacity());
         }
-        void rm(node_pos_t node)
+        void erase(node_pos_t node)
         {
             if(! is_valid(node))
                 return;
             std::vector<arc_pos_t> ls_arcs;
-            std::copy(nodes_vec.at(node.x).in_arcs.begin(),
-                      nodes_vec.at(node.x).in_arcs.end(),
+            std::copy(my_nodes.at(node).in_arcs.begin(),
+                      my_nodes.at(node).in_arcs.end(),
                       std::back_inserter(ls_arcs));
-            std::copy(nodes_vec.at(node.x).out_arcs.begin(),
-                      nodes_vec.at(node.x).out_arcs.end(),
+            std::copy(my_nodes.at(node).out_arcs.begin(),
+                      my_nodes.at(node).out_arcs.end(),
                       std::back_inserter(ls_arcs));
                       
             // first remove all incoming and outgoin arcs
             for(auto arc: ls_arcs)
-                rm(arc);
+                erase(arc);
             
-            auto id = nodes_ids.at(node.x);
-            nodes_htable.erase(id);
-            nodes_vec.at(node.x).clear();
-            free_nodes.insert(node);
-            
-            // done
-            free_node_space();
+            if(has_id(node))
+            {
+                auto id = nodes_ids.at(node);
+                nodes_htable.erase(id);
+            }
+            my_nodes.erase(node);
+            nodes_ids.resize(my_nodes.capacity());
+            nodes_ids_flag.resize(my_nodes.capacity());
         }
         node_pos_t new_node()
         {
-            node_pos_t node{NONE};
-            if(!free_nodes.empty())
-            // take a node from a free slot
-            {
-                node = *free_nodes.begin();
-                free_nodes.erase(node);
-            }else
-            // no free slots,
-            // take a node from the end of the buffer
-            {
-                node = node_pos_t{nodes_vec.size()};
-                nodes_vec.emplace_back();
-                nodes_ids.emplace_back();
-            }
-            nodes_vec.at(node.x).init();
+            node_pos_t node = my_nodes.insert(node_data_t{});
+            
+            nodes_ids.resize(my_nodes.capacity());
+            nodes_ids_flag.resize(my_nodes.capacity());
+            
+            nodes_ids_flag.at(node)=false;
+            
             return node;
         }
         
@@ -341,7 +256,7 @@ namespace ln
             if(!is_valid(node))
                 throw std::runtime_error(
                     "digraph::out_arcs invalid node");
-            return nodes_vec.at(node.x).out_arcs;
+            return my_nodes.at(node).out_arcs;
         }
         
         arc_pos_t new_arc(node_pos_t a, node_pos_t b)
@@ -349,23 +264,14 @@ namespace ln
             if(!is_valid(a) || !is_valid(b))
                 throw std::runtime_error("digraph::new_arc add a new arc with invalid end nodes");
             
-            arc_pos_t arc{NONE};
-            if(!free_arcs.empty())
-            // take an arc from a free slot
-            {
-                arc = *free_arcs.begin();
-                free_arcs.erase(arc);
-            }else
-            // no free slots,
-            // take an arc from the end of the buffer
-            {
-                arc = arc_pos_t{arcs_vec.size()};
-                arcs_vec.emplace_back();
-                arcs_ids.emplace_back();
-            }
-            arcs_vec.at(arc.x).init(a,b);
-            nodes_vec.at(a.x).add_out_arc(arc); 
-            nodes_vec.at(b.x).add_in_arc(arc); 
+            arc_pos_t arc = my_arcs.insert(arc_data_t{a,b,NONE});
+            arcs_ids.resize(my_arcs.capacity());
+            arcs_ids_flag.resize(my_arcs.capacity());
+            
+            arcs_ids_flag.at(arc)=false;
+            
+            my_nodes.at(a).add_out_arc(arc); 
+            my_nodes.at(b).add_in_arc(arc); 
             return arc;
         }
         void set_dual(arc_pos_t arc1, arc_pos_t arc2)
@@ -373,19 +279,25 @@ namespace ln
             if(!is_valid(arc1) || !is_valid(arc2))
                 throw std::runtime_error("digraph::set_dual invalid arcs");
                 
-            arcs_vec.at(arc1.x).dual = arc2;
-            arcs_vec.at(arc2.x).dual = arc1;
+            my_arcs.at(arc1).dual = arc2;
+            my_arcs.at(arc2).dual = arc1;
         }
         
         auto max_num_arcs()const
         {
-            assert(arcs_vec.size()==arcs_ids.size());
-            return arcs_vec.size();
+            return my_arcs.capacity();
+        }
+        auto num_arcs()const
+        {
+            return my_arcs.size();
         }
         auto max_num_nodes()const
         {
-            assert(nodes_vec.size()==nodes_ids.size());
-            return nodes_vec.size();
+            return my_nodes.capacity();
+        }
+        auto num_nodes()const
+        {
+            return my_nodes.size();
         }
         
         // translation 
@@ -393,13 +305,17 @@ namespace ln
         {
             if(!is_valid(node))
                 throw std::runtime_error("digraph::get_node_id invalid node");
-            return nodes_ids.at(node.x);
+            if(!has_id(node))
+                throw std::runtime_error("digraph::get_node_id node without id");
+            return nodes_ids.at(node);
         }
         arc_id_t get_arc_id(arc_pos_t arc)const
         {
             if(!is_valid(arc))
                 throw std::runtime_error("digraph::get_arc_id invalid arc");
-            return arcs_ids.at(arc.x);
+            if(!has_id(arc))
+                throw std::runtime_error("digraph::get_arc_id arc without id");
+            return arcs_ids.at(arc);
         }
         node_pos_t get_node(node_id_t id)const
         {
@@ -427,7 +343,8 @@ namespace ln
             if(!is_valid(node))
             {
                 node = new_node();
-                nodes_ids.at(node.x) = id;
+                nodes_ids.at(node) = id;
+                nodes_ids_flag.at(node) = true;
                 nodes_htable[id] = node;
             }
             return node;
@@ -444,9 +361,8 @@ namespace ln
             auto arc2 = new_arc(n_b,n_a);
             set_dual(arc1,arc2);
             
-            arcs_ids.at(arc1.x) = id;
-            arcs_ids.at(arc2.x) = id;
-            
+            arcs_ids.at(arc1) = id;
+            arcs_ids_flag.at(arc1) = true;
             arcs_htable[id] = arc1;
             
             return {arc1,arc2};
@@ -457,19 +373,18 @@ namespace ln
             if(!is_valid(node))
                 return;
             nodes_htable.erase(id);
-            rm(node);
+            erase(node);
         }
         void remove_arc(arc_id_t id)
         {
             auto arc = get_arc(id);
             if(!is_valid(arc))
                 return;
+            arcs_htable.erase(id);
             
             auto arc2 = arc_dual(arc);
-            
-            arcs_htable.erase(id);
-            rm(arc);
-            rm(arc2);
+            erase(arc);
+            erase(arc2);
         }
         
         digraph()
