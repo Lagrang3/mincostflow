@@ -167,15 +167,15 @@ namespace ln
         }
         auto begin()
         {
-            return iterator(*this,0);
+            return iterator(*this,index_t{0});
         }
         auto begin()const
         {
-            return const_iterator(*this,0);
+            return const_iterator(*this,index_t{0});
         }
         auto cbegin()const
         {
-            return const_iterator(*this,0);
+            return const_iterator(*this,index_t{0});
         }
         auto end()
         {
