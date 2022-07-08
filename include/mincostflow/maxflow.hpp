@@ -4,110 +4,61 @@
     
 namespace ln
 {
-    class network_flow_solver
+    template<typename T, typename path_solver_type>
+    class maxflow_augmenting_path : public digraph_types
     {
-        protected:
-        
-        const std::size_t nedges;
-        digraph Graph; // extended graph
-        
-        std::vector<int> residual_cap;
-        
-        int dual(int e)const
-        {
-            return e<nedges ? e+nedges : e-nedges;
-        }
-        int prime_edge(int e)const
-        {
-            return e<nedges ? e : e-nedges;
-        }
-        
-        
         public:
-        network_flow_solver(const digraph& in_graph):
-            nedges{in_graph.n_edges()},
-            
-            Graph(in_graph.n_vertex()),
-            residual_cap(nedges*2,0)
+        
+        using value_type = T;    
+        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
+        
+        
+        template<typename graph_t>
+        value_type flow_at(
+            const graph_t& g,
+            const arc_pos_t e,
+            const std::vector<value_type>& capacity)
         {
-            for(auto [a,b]: in_graph.edges())
-                Graph.add_edge(a,b);
-            for(auto [a,b]: in_graph.edges())
-                Graph.add_edge(b,a);
+            auto e2 = g.arc_dual(e);
+            return capacity.at(e2.x);
         }
         
-        void set_capacity(const std::vector<int>& capacity)
+        template<typename graph_t, typename condition_t>
+        value_type solve(
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            std::vector<value_type>& capacity,
+            condition_t valid_arc)
         {
-            if(capacity.size()!=nedges)
-                throw std::runtime_error(
-                    "set_capacity: capacity.size() != "
-                    "number of edges");
+            value_type sent=0;
+            path_solver_type path_solver;
             
-            for(int e=0;e<nedges;++e)
-            {
-                residual_cap.at(e) = capacity.at(e);
-                residual_cap.at(dual(e)) = 0;
-            }
-        }
-        
-        int capacity_at(int e)const
-        {
-            if(e<0 || e>=nedges)
-                throw std::runtime_error("capacity_at: edge id is not valid");
-                
-            return residual_cap.at(e) + residual_cap.at(dual(e));
-        }
-        int flow_at(int e)const
-        {
-            if(e<0 || e>=nedges)
-                throw std::runtime_error("capacity_at: edge id is not valid");
-            
-            return residual_cap.at(dual(e));
-        }
-    };
-    
-    template<typename path_solver_type>
-    class maxflow_augmenting_path : public network_flow_solver
-    {
-        
-        template<class condition_t>
-        int execute(
-            const int Source, const int Dest,
-            condition_t valid_edge)
-        {
-            int sent=0;
-            path_solver_type path_solver(Graph);
-            
-            //int cycle=0;
             while(1)
             {
-                // cycle++;
-                // std::cerr << "augmenting path cycle: " << cycle << '\n';
-                // std::cerr << "flow sent: " << sent << '\n';
-            
                 bool found = path_solver.solve(
-                    Source, Dest,
-                    // edge is valid if
-                    [this,valid_edge](int e)
+                    g,
+                    Source,Dest,
+                    [valid_arc,&capacity](arc_pos_t e)
                     {
-                        return residual_cap.at(e)>0 && valid_edge(e);
+                        return capacity.at(e)>0 && valid_arc(e);
                     });
-                    
+                
+                
                 if(!found)
                     break;
                 
-                auto path = path_solver.get_path(Dest);
+                auto path = path_solver.get_path(g,Dest);
                 
-                int k = INF;
+                value_type k = INFINITY;
                 for(auto e : path)
                 {
-                    k = std::min(k,residual_cap.at(e));
+                    k = std::min(k,capacity.at(e));
                 }
                 
                 for(auto e: path)
                 {
-                    residual_cap[e] -= k;
-                    residual_cap[dual(e)] += k;
+                    capacity.at(e) -= k;
+                    capacity.at(g.arc_dual(e)) += k;
                 } 
                 
                 sent += k;
@@ -115,24 +66,8 @@ namespace ln
             return sent;
         }
         
-        public:
-        maxflow_augmenting_path(const digraph& in_graph):
-            network_flow_solver{in_graph}
+        maxflow_augmenting_path()
         {}
-        
-        template<class condition_t>
-        int solve(
-            const int Source, const int Dest,
-            condition_t admissible)
-        {
-            return execute(Source,Dest,admissible);
-        }
-        int solve(
-            const int Source, const int Dest)
-        {
-            return execute(Source,Dest,[](int){return true;});
-        }
-        
     };
    
     template<typename path_solver_type>

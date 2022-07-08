@@ -173,7 +173,7 @@ namespace ln
         template<typename graph_t, typename condition_t>
         void initialize (
             const graph_t &g,
-            condition_t valid_edge)
+            condition_t valid_arc)
         {
             parent_structure::init(g);
             distance_structure::init(g);
@@ -193,7 +193,7 @@ namespace ln
                 q.pop();
                 
                 for(auto e: g.in_arcs(n))
-                if( valid_edge(e) ) 
+                if( valid_arc(e) ) 
                 {
                     auto [a,b] = g.arc_ends(e);
                     value_type dnew = distance[b] + 1;
@@ -232,15 +232,12 @@ namespace ln
                 initialize(g,valid_arc);
             }
             
+            parent_structure::init(g);
+            
+            
             for(auto current = Source;
                 distance.at(Source)<g.num_nodes() && current!=Dest;)
             {
-                // cycle++;
-                // std::cerr << "advance-relabel: " << cycle << '\n';
-                // std::cerr << "current node: " << current << '\n';
-                // std::cerr << "distance(current): " << distance.at(current) << '\n';
-                // if(cycle>100) break;
-                
                // advance
                bool found_next=false;
                for(auto e : g.out_arcs(current))
