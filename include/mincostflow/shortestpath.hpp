@@ -21,128 +21,61 @@ namespace ln
     }
     
     
-    class shortestPath_tree
-    /*
-        Represents: ?
-        Invariant: 
-        -> the root is the root of the tree,
-        
-        -> the root has no parent edge
-        
-        -> a node v is in the tree if and only if parent_edge[v]>=0.
-        
-        -> parent_edge.size() == Graph.n_vertex()
-        
-        User interface: ?
-    */
+    class parent_structure : public digraph_types
     {
-        
-        int root{-1};
-        std::vector<int> parent_edge;
-        
-        protected:
-        
-        const digraph& Graph;
-        
         public:
-        
-        shortestPath_tree(const digraph& graph):
-            parent_edge(graph.n_vertex(),-1),
-            Graph{graph}
-        {
-        }
-        
-        void set_root(int v)
-        // O(|V|)
-        {
-            root = v;
-            if(root>=0)
-            {
-                std::fill(parent_edge.begin(),parent_edge.end(),-1);
-            }
-        }
-        
-        auto get_root() const
-        // O(1)
-        {
-            return root;
-        }
+        std::vector<arc_pos_t> parent;
        
-        bool has_root()const
-        // O(1)
+        bool has_parent(node_pos_t x)
         {
-            return root>=0;
+            return parent.at(x)!=arc_pos_t{NONE};
         }
         
-        auto get_parent(int v)const
-        // O(1)
+        template<typename graph_t>
+        void init(const graph_t& g)
         {
-            return parent_edge.at(v);
+            parent.resize(g.max_num_nodes());
+            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
         }
         
-        bool has_parent(int v)const
-        // O(1)
-        {
-            // assert(v>=0 && v<parent_edge.size());
-            return parent_edge.at(v)>=0;
-        }
         
-        bool is_connected(int v)const
-        // O(1)
+        template<typename graph_t>
+        auto get_path(const graph_t& g,node_pos_t last)const
         {
-            return v==root || parent_edge.at(v)>=0;
-        }
-        
-        void set_parent(int b, int e)
-        // O(1)
-        {
-            if(b==root)
-                throw std::runtime_error("set_parent: root cannot have a parent edge");
-            
-            
-            int a = Graph.from_node(e);
-            //assert(a>=0 && a<Graph.n_vertex());
-            //assert(b>=0 && b<Graph.n_vertex());
-            //assert(e>=0 && e<Graph.n_edges());
-            
-            if( (!has_parent(a)) && a!=root)
-                throw std::runtime_error("set_parent: parent node is not connected");
-            
-            // if (a is in the subtree rooted at b) throw ...;
-            //    throw std::runtime_error("set_parent: node is already connected");
-            
-            parent_edge.at(b)=e;
-        }
-       
-        auto get_path(int v) const
-        // O(|V|)
-        {
-            if(! has_root())
-                throw std::runtime_error("find_path: root is not set");
-            
-            std::vector<int> path;
-            
-            if(parent_edge.at(v)<0) 
-            // node v is disconnected
-                return path;
-            
-            if(v==root)
-            // we are already there
-                return path;
-            
-            while(v!=root)
+            std::vector<arc_pos_t> path;
+            while(1)
             {
-                int e = parent_edge.at(v);
+                auto e = parent.at(last);
+                if(!g.is_valid(e))
+                    break;
+                
                 path.push_back(e);
-                v = Graph.from_node(e);
+                auto [a,b] = g.arc_ends(e);
+                last = a;
+                
             }
             return path;
         }
     };
-        
-    constexpr int INF = std::numeric_limits<int>::max();
     
-    class pathSearch_BFS : public shortestPath_tree
+    template<typename T>
+    class distance_structure
+    {
+        public:
+        using value_type = T;
+        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
+        std::vector<value_type> distance;
+        
+        template<typename graph_t>
+        void init(const graph_t& g)
+        {
+            distance.resize(g.max_num_nodes());
+            std::fill(distance.begin(),distance.end(),INFINITY);
+        }
+    };
+    
+    
+    class pathSearch_BFS : public parent_structure, public distance_structure<int>
     /*
         Represents: weigthless path using BFS
         Invariant:
@@ -151,55 +84,63 @@ namespace ln
         Complexity: |E|+|V|
     */
     {
-        std::vector<int> distance;
         public:
+        using value_type = int;
+        using parent_structure::parent;
+        using parent_structure::init;
+        using distance_structure<value_type>::distance;
+        using distance_structure<value_type>::init;
+        using distance_structure<value_type>::INFINITY;
         
-        pathSearch_BFS(const digraph& graph):
-            shortestPath_tree{graph},
-            distance(Graph.n_vertex())
+        pathSearch_BFS()
         {
         }
         
-        void reset()
-        {
-        }
-        
-        template<class condition_t>
+        template<typename graph_t, typename condition_t>
         bool solve (
-            int Source, int Dest,
-            condition_t valid_edge)
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            condition_t valid_arc)
         // each call resets the state of the tree and distances
         // O(|E|+|V|)
         {
             bool found = false;
             
-            set_root(Source);
-            std::fill(distance.begin(),distance.end(),INF);
-            distance.at(get_root()) = 0;
+            if(!g.is_valid(Source))
+                throw std::runtime_error(
+                    "pathSearch_BFS::solve source node is not valid");
             
-            std::queue<int> q;
-            q.push(get_root());
+            if(!g.is_valid(Dest))
+                throw std::runtime_error(
+                    "pathSearch_BFS::solve destination node is not valid");
+            
+            parent_structure::init(g);
+            distance_structure::init(g);
+            
+            distance.at(Source) = 0;
+            
+            std::queue<node_pos_t> q;
+            q.push(Source);
             
             while(!q.empty())
             {
-                auto a = q.front();
+                auto node = q.front();
                 q.pop();
                 
-                if(a==Dest)
+                if(node==Dest)
                 {
                     found = true;
                     break;
                 }
-                for(int e: Graph.out_edges(a))
-                if( valid_edge(e) ) 
+                for(auto e: g.out_arcs(node))
+                if( valid_arc(e) ) 
                 {
-                    // assert(distance[a]!=INF);
-                    auto b = Graph.to_node(e);
+                    auto [a,b] = g.arc_ends(e);
                     
-                    if(distance[b]==INF)
+                    if(distance.at(b)==INFINITY)
                     {
-                        distance[b] = distance[a]+1;
-                        set_parent(b,e);
+                        distance.at(b) = distance.at(a)+1;
+                        parent.at(b) = e;
                         q.push(b);
                     }
                 }
@@ -208,7 +149,7 @@ namespace ln
         }
     };
     
-    class pathSearch_labeling : public shortestPath_tree
+    class pathSearch_labeling : public parent_structure, public distance_structure<int>
     /*
         Represents: shortest path with labeling
         Invariant:
@@ -217,25 +158,29 @@ namespace ln
         Complexity:
     */
     {
-        int last_source{-1},last_dest{-1};
-        std::vector<int> distance,dist_freq;
         public:
+        using value_type = int;
+        using parent_structure::parent;
+        using parent_structure::init;
+        using distance_structure<value_type>::distance;
+        using distance_structure<value_type>::init;
+        using distance_structure<value_type>::INFINITY;
         
-        pathSearch_labeling(const digraph& graph):
-            shortestPath_tree{graph},
-            distance(Graph.n_vertex()),
-            dist_freq(Graph.n_vertex()+1)
-        {
-        }
-        template<class condition_t>
+        node_pos_t last_source{NONE},last_dest{NONE};
+        std::vector<int> dist_freq;
+        
+        template<typename graph_t, typename condition_t>
         void initialize (
+            const graph_t &g,
             condition_t valid_edge)
         {
-            set_root(last_source);
-            std::fill(distance.begin(),distance.end(),INF);
-            std::fill(dist_freq.begin(),dist_freq.end(),0);
-            std::queue<int> q;
+            parent_structure::init(g);
+            distance_structure::init(g);
             
+            dist_freq.resize(g.num_nodes()+1);
+            std::fill(dist_freq.begin(),dist_freq.end(),0);
+            
+            std::queue<int> q;
             distance.at(last_dest)=0;
             
             // TODO: write a general purpose BFS label solver
@@ -246,14 +191,13 @@ namespace ln
                 auto n = q.front();
                 q.pop();
                 
-                for(int e: Graph.in_edges(n))
+                for(auto e: g.in_arcs(n))
                 if( valid_edge(e) ) 
                 {
-                    // assert b==n
-                    auto [a,b] = Graph.get_edge(e);
+                    auto [a,b] = g.arc_ends(e);
                     int dnew = distance[b] + 1;
                     
-                    if(distance[a]==INF)
+                    if(distance[a]==INFINITY)
                     {
                         distance[a] = dnew;
                         dist_freq.at(dnew)++;
@@ -263,25 +207,32 @@ namespace ln
             }
         }
         
+        
+        public:
+        
+        pathSearch_labeling()
+        {}
+        
+        
         void reset()
         {
-            last_source = last_dest = -1;
+            last_source = last_dest = node_pos_t{NONE};
         }
-        template<class condition_t>
+        template<typename graph_t, typename condition_t>
         bool solve (
-            const int Source, const int Dest,
-            condition_t valid_edge)
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            condition_t valid_arc)
         {
-            if(last_source<0 || last_dest<0 || last_source!=Source || last_dest!=Dest)
+            if(last_source!=Source || last_dest!=Dest)
             {
                 last_source = Source;
                 last_dest = Dest;
-                initialize(valid_edge);
+                initialize(g,valid_arc);
             }
-            set_root(Source);
             
-            for(int current = Source;
-                distance.at(Source)<Graph.n_vertex() && current!=Dest;)
+            for(auto current = Source;
+                distance.at(Source)<g.num_nodes() && current!=Dest;)
             {
                 // cycle++;
                 // std::cerr << "advance-relabel: " << cycle << '\n';
@@ -291,13 +242,13 @@ namespace ln
                 
                // advance
                bool found_next=false;
-               for(int e : Graph.out_edges(current))
+               for(auto e : g.out_arcs(current))
                {
-                    int next = Graph.to_node(e);
-                    if(valid_edge(e) && distance.at(current)==distance.at(next)+1)
+                    auto [x,next] = g.arc_ends(e);
+                    if(valid_arc(e) && distance.at(current)==distance.at(next)+1)
                     {
                         found_next = true;
-                        set_parent(next,e);
+                        parent.at(next) = e;
                         current = next;
                         break;
                     }
@@ -305,11 +256,11 @@ namespace ln
                if(found_next) continue; // advance success
                
                // relabel
-               int min_dist = Graph.n_vertex()+10;
-               for(int e : Graph.out_edges(current))
+               int min_dist = g.num_nodes()+10;
+               for(auto e : g.out_arcs(current))
                {
-                    int next = Graph.to_node(e);
-                    if(valid_edge(e))
+                    auto [x,next] = g.arc_ends(e);
+                    if(valid_arc(e))
                     {
                         min_dist= std::min(min_dist,distance.at(next));
                     }
@@ -326,10 +277,10 @@ namespace ln
                }
                
                // retreat
-               if(get_parent(current)>=0)
+               if(has_parent(current))
                {
-                    int e = get_parent(current);
-                    current = Graph.from_node(e);
+                    auto e = parent.at(current);
+                    current = g.arc_ends(e).first;
                }
             }
             return has_parent(Dest);
@@ -338,7 +289,7 @@ namespace ln
     };
     
     template<typename T>
-    class shortestPath_FIFO : public digraph_types
+    class shortestPath_FIFO : public parent_structure, public distance_structure<T>
     /*
         Represents: shortest path label-correcting FIFO
         Invariant:
@@ -349,9 +300,11 @@ namespace ln
     {
         public:
         using value_type = T;
-        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
-        std::vector<value_type> distance;
-        std::vector<arc_pos_t>  parent;
+        using parent_structure::parent;
+        using parent_structure::init;
+        using distance_structure<value_type>::distance;
+        using distance_structure<value_type>::init;
+        using distance_structure<value_type>::INFINITY;
         
         shortestPath_FIFO()
         {}
@@ -366,26 +319,20 @@ namespace ln
         // each call resets the state of the tree and distances
         // O( pseudo-polynomial )
         {
+            parent_structure::init(g);
+            distance_structure<value_type>::init(g);
+            
             if(!g.is_valid(Source))
                 throw std::runtime_error(
                     "shortestPath_FIFO::solve source node is not valid");
             
-            const auto num_arcs = g.max_num_arcs();
-            const auto num_nodes = g.max_num_nodes();
-        
-            if(weight.size()<num_arcs)
+            if(weight.size()<g.max_num_arcs())
                 throw std::runtime_error(
                     "shortestPath_FIFO::solve weight does not map arc property");
             
-            distance.resize(num_nodes);
-            parent.resize(num_nodes);
-            
-            std::fill(distance.begin(),distance.end(),INFINITY);
-            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
-            
             std::queue<node_pos_t> q;
             q.push(Source);
-            distance.at(Source.x)=0;
+            distance.at(Source)=0;
             
             while(!q.empty())
             {
@@ -396,12 +343,12 @@ namespace ln
                 if( valid_arc(e) ) 
                 {
                     auto [a,b] = g.arc_ends(e);
-                    const value_type dnew = distance.at(a.x)+weight.at(e.x);
+                    const value_type dnew = distance.at(a)+weight.at(e);
                     
-                    if(distance.at(b.x)>dnew)
+                    if(distance.at(b)>dnew)
                     {
-                        distance.at(b.x) = dnew;
-                        parent.at(b.x) = e;
+                        distance.at(b) = dnew;
+                        parent.at(b) = e;
                         q.push(b);
                     }
                 }
@@ -410,7 +357,7 @@ namespace ln
     };
     
     template<typename T>
-    class shortestPath_BellmanFord : public digraph_types
+    class shortestPath_BellmanFord : public parent_structure, public distance_structure<T>
     /*
         Represents: shortest path using Bellman-Ford
         Invariant:
@@ -421,10 +368,11 @@ namespace ln
     {
         public:
         using value_type = T;
-        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
-        
-        std::vector<value_type> distance;
-        std::vector<arc_pos_t>  parent;
+        using parent_structure::parent;
+        using parent_structure::init;
+        using distance_structure<value_type>::distance;
+        using distance_structure<value_type>::init;
+        using distance_structure<value_type>::INFINITY;
         
         shortestPath_BellmanFord()
         {}
@@ -439,42 +387,38 @@ namespace ln
         // each call resets the state of the tree and distances
         // O(|V||E|)
         {
+            parent_structure::init(g);
+            distance_structure<value_type>::init(g);
+            
             if(!g.is_valid(Source))
                 throw std::runtime_error(
                     "shortestPath_BellmanFord::solve source node is not valid");
             
-            const auto num_arcs = g.max_num_arcs();
-            const auto num_nodes = g.max_num_nodes();
-        
-            if(weight.size()<num_arcs)
+            if(weight.size()<g.max_num_arcs())
                 throw std::runtime_error(
                     "shortestPath_BellmanFord::solve weight does not map arc property");
             
-            distance.resize(num_nodes);
-            parent.resize(num_nodes);
-            
-            std::fill(distance.begin(),distance.end(),INFINITY);
-            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
-            
-            distance.at(Source.x) = 0;
+            distance.at(Source) = 0;
             
             // TODO: use here the right number of nodes
-            for(int i=0;i<num_nodes;++i)
+            for(auto i=0UL;i<g.num_nodes();++i)
             {
                 bool updates = false;
                 for(auto e: g.arcs())
-                if(valid_arc(e))
                 {
-                    const auto [a,b] = g.arc_ends(e);
-                    if(distance.at(a.x)==INFINITY)
-                        continue;
-                    
-                    const value_type dnew = distance[a.x]+weight.at(e.x);
-                    if(distance.at(b.x)>dnew)
+                    if(valid_arc(e))
                     {
-                        distance[b.x]=dnew;
-                        parent.at(b.x) = e;
-                        updates = true;
+                        const auto [a,b] = g.arc_ends(e);
+                        if(distance.at(a)==INFINITY)
+                            continue;
+                        
+                        const value_type dnew = distance[a]+weight.at(e);
+                        if(distance.at(b)>dnew)
+                        {
+                            distance[b]=dnew;
+                            parent.at(b) = e;
+                            updates = true;
+                        }
                     }
                 }
                 if(! updates)
@@ -485,7 +429,7 @@ namespace ln
     };
     
     template<typename T>
-    class shortestPath_Dijkstra : public digraph_types
+    class shortestPath_Dijkstra : public parent_structure, public distance_structure<T>
     /*
         Represents: shortest path with weights using Dijkstra
         Invariant:
@@ -495,12 +439,12 @@ namespace ln
     */
     {
         public:
-        
         using value_type = T;
-        static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
-        std::vector<value_type> distance;
-        std::vector<arc_pos_t>  parent;
-        
+        using parent_structure::parent;
+        using parent_structure::init;
+        using distance_structure<value_type>::distance;
+        using distance_structure<value_type>::init;
+        using distance_structure<value_type>::INFINITY;
         
         shortestPath_Dijkstra()
         {}
@@ -515,25 +459,20 @@ namespace ln
         // precondition: doesnt work with negative weights!
         // O( |E|+|V| log |V| )
         {
+            parent_structure::init(g);
+            distance_structure<value_type>::init(g);
+            
             if(!g.is_valid(Source))
                 throw std::runtime_error(
                     "shortestPath_Dijkstra::solve source node is not valid");
             
-            const auto num_arcs = g.max_num_arcs();
-            const auto num_nodes = g.max_num_nodes();
-        
-            if(weight.size()<num_arcs)
+            if(weight.size()<g.max_num_arcs())
                 throw std::runtime_error(
                     "shortestPath_Dijkstra::solve weight does not map arc property");
             
-            distance.resize(num_nodes);
-            parent.resize(num_nodes);
-            std::vector<bool> visited(num_nodes,false);
+            std::vector<bool> visited(g.max_num_nodes(),false);
             
-            std::fill(distance.begin(),distance.end(),INFINITY);
-            std::fill(parent.begin(),parent.end(),arc_pos_t{NONE});
-            
-            distance.at(Source.x) = 0;
+            distance.at(Source) = 0;
             std::priority_queue< 
                 std::pair<value_type,node_pos_t>, 
                 std::vector< std::pair<value_type,node_pos_t> >, 
@@ -546,25 +485,25 @@ namespace ln
                 const auto [dist,node] = q.top();
                 q.pop();
                 
-                if(visited.at(node.x))
+                if(visited.at(node))
                     continue;
                 
-                visited[node.x]=true;
+                visited[node]=true;
                 
                 for(auto e: g.out_arcs(node))
                 if( valid_arc(e) ) 
                 {
                     auto [a,b] = g.arc_ends(e);
                     
-                    if(weight.at(e.x)<0)
+                    if(weight.at(e)<0)
                         throw std::runtime_error(
                             "shortestPath_Dijkstra::solve found a negative edge");
                     
-                    value_type dnew = dist + weight.at(e.x);
-                    if(distance.at(b.x)>dnew)
+                    value_type dnew = dist + weight.at(e);
+                    if(distance.at(b)>dnew)
                     {
-                        distance[b.x] = dnew;
-                        parent[b.x] = e;
+                        distance[b] = dnew;
+                        parent[b] = e;
                         q.push({dnew,b});
                     }
                 }
