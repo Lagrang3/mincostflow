@@ -78,6 +78,8 @@ int main()
         test< ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS>  >();
         test< ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling>  >();
         test< ln::maxflow_preflow<value_type>  >();
+        test< ln::maxflow_scaling<value_type,ln::pathSearch_BFS> >();
+        test< ln::maxflow_scaling<value_type,ln::pathSearch_labeling> >();
     }catch(...)
     {
         return 1;

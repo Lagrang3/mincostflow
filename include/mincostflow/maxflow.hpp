@@ -83,21 +83,30 @@ namespace ln
         {}
     };
    
-    template<typename path_solver_type>
-    class maxflow_scaling : public network_flow_solver
+    template<typename T, typename path_solver_type>
+    class maxflow_scaling : public maxflow_type<T>
     {
+        public:
+        using base_type = maxflow_type<T>;
+        using value_type = typename base_type::value_type;    
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
         
-        template<class condition_t>
-        int execute(
-            const int Source, const int Dest,
-            condition_t admissible)
+        template<typename graph_t, typename condition_t>
+        value_type solve(
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            std::vector<value_type>& residual_cap,
+            condition_t valid_arc)
         // augmenting path
         {
-            int sent=0;
-            path_solver_type search_algo(Graph);
+            value_type sent=0;
+            path_solver_type search_algo;
             
-            int cap_flow = 1;
-            for(int e : Graph.out_edges(Source))
+            value_type cap_flow = 1;
+            for(auto e : g.out_arcs(Source))
                 cap_flow = std::max(cap_flow,residual_cap.at(e));
             
             cap_flow = lower_bound_power2(cap_flow);
@@ -111,11 +120,12 @@ namespace ln
                 // std::cerr << "cap flow: " << cap_flow << '\n';
             
                 bool found = search_algo.solve(
+                    g,
                     Source,Dest,
                     // edge is valid if
-                    [this,admissible,cap_flow](int e)
+                    [this,valid_arc,cap_flow,&residual_cap](arc_pos_t e)
                     {
-                        return residual_cap.at(e)>=cap_flow && admissible(e);
+                        return residual_cap.at(e)>=cap_flow && valid_arc(e);
                     });
                 
                 if(! found)
@@ -126,38 +136,23 @@ namespace ln
                     continue;
                 }
                 
-                auto path = search_algo.get_path(Dest);
+                auto path = search_algo.get_path(g,Dest);
                 
                 // std::cerr << "path found!\n";
                 
                 for(auto e: path)
                 {
                     residual_cap[e] -= cap_flow;
-                    residual_cap[dual(e)] += cap_flow;
+                    residual_cap[g.arc_dual(e)] += cap_flow;
                 } 
                 
                 sent += cap_flow;
             }
             return sent;
         }
-        public:
-        maxflow_scaling(const digraph& in_graph):
-            network_flow_solver{in_graph}
+        
+        maxflow_scaling()
         {}
-        
-        template<class condition_t>
-        int solve(
-            const int Source, const int Dest,
-            condition_t admissible)
-        {
-            return execute(Source,Dest,admissible);
-        }
-        int solve(
-            const int Source, const int Dest)
-        {
-            return execute(Source,Dest,[](int){return true;});
-        }
-        
     };
     
     

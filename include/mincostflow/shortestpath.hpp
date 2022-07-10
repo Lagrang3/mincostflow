@@ -96,6 +96,9 @@ namespace ln
         {
         }
         
+        void reset()
+        {}
+        
         template<typename graph_t, typename condition_t>
         bool solve (
             const graph_t& g,
