@@ -6,11 +6,11 @@
 #include <iostream>
 
 using value_type = int;
-typedef ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> maxflow_t; // 1.04s
+// typedef ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> maxflow_t; // 1.04s
 // typedef ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> maxflow_t; // 0.04s
 // typedef ln::maxflow_scaling<ln::pathSearch_BFS> maxflow_t; // 0.15s
 // typedef ln::maxflow_scaling<ln::pathSearch_labeling> maxflow_t; // 0.02s
-// typedef ln::maxflow_preflow maxflow_t; // 0.20s
+typedef ln::maxflow_preflow<value_type> maxflow_t; // 0.53s
 
 int main()
 {

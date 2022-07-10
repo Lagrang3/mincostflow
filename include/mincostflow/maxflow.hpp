@@ -4,14 +4,13 @@
     
 namespace ln
 {
-    template<typename T, typename path_solver_type>
-    class maxflow_augmenting_path : public digraph_types
+    
+    template<typename T>
+    class maxflow_type : public digraph_types
     {
         public:
-        
         using value_type = T;    
         static constexpr value_type INFINITY = std::numeric_limits<value_type>::max();
-        
         
         template<typename graph_t>
         value_type flow_at(
@@ -22,6 +21,20 @@ namespace ln
             auto e2 = g.arc_dual(e);
             return capacity.at(e2.x);
         }
+    };
+
+    template<typename T, typename path_solver_type>
+    class maxflow_augmenting_path : public maxflow_type<T>
+    {
+        public:
+        using base_type = maxflow_type<T>;
+        using value_type = typename base_type::value_type;    
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
+        
+        
         
         template<typename graph_t, typename condition_t>
         value_type solve(
@@ -147,21 +160,31 @@ namespace ln
         
     };
     
-    class maxflow_preflow : public network_flow_solver
+    
+    template<typename T>
+    class maxflow_preflow : public maxflow_type<T>, public distance_structure<int>
     {
+        public:
+        using base_type = maxflow_type<T>;
+        using value_type = typename base_type::value_type;    
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
         
-        std::vector<int> distance;
-        std::vector<int> excess;
+        std::vector<T> excess;
         
-        template<class condition_t>
+        template<typename graph_t, typename condition_t>
         void initialize_distance(
-            const int Dest,
-            condition_t valid_edge)
+            const graph_t& g,
+            const node_pos_t Dest,
+            condition_t valid_arc)
         {
-            std::fill(distance.begin(),distance.end(),INF);
+            distance_structure<int>::init(g);
+            
             distance.at(Dest)=0;
             
-            std::queue<int> q;
+            std::queue<node_pos_t> q;
             q.push(Dest);
             
             while(!q.empty())
@@ -169,14 +192,14 @@ namespace ln
                 auto n = q.front();
                 q.pop();
                 
-                for(int e: Graph.in_edges(n))
-                if( valid_edge(e) ) 
+                for(auto e: g.in_arcs(n))
+                if( valid_arc(e) ) 
                 {
                     // assert b==n
-                    auto [a,b] = Graph.get_edge(e);
+                    auto [a,b] = g.arc_ends(e);
                     int dnew = distance[b] + 1;
                     
-                    if(distance[a]==INF)
+                    if(distance[a]==INFINITY)
                     {
                         distance[a] = dnew;
                         q.push(a);
@@ -184,23 +207,27 @@ namespace ln
                 }
             }
         }
+        public:
         
-        template<class condition_t>
-        int execute(
-            const int Source, const int Dest,
-            condition_t valid_edge)
+        template<typename graph_t, typename condition_t>
+        value_type solve(
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            std::vector<value_type>& residual_cap,
+            condition_t valid_arc)
         {
+            excess.resize(g.max_num_nodes());
             std::fill(excess.begin(),excess.end(),0);
             
-            initialize_distance(Dest,valid_edge);
-            std::queue<int> q;
+            initialize_distance(g,Dest,valid_arc);
+            std::queue<node_pos_t> q;
             
-            auto push = [&](int e)
+            auto push = [&](arc_pos_t e)
             {
-                auto [a,b] = Graph.get_edge(e);
-                const int delta = std::min(excess[a],residual_cap.at(e));
+                auto [a,b] = g.arc_ends(e);
+                const auto delta = std::min(excess[a],residual_cap.at(e));
                 residual_cap.at(e) -= delta;
-                residual_cap.at(dual(e)) += delta;
+                residual_cap.at(g.arc_dual(e)) += delta;
                 
                 assert(delta>=0);
                 
@@ -211,24 +238,24 @@ namespace ln
                     q.push(b);
             };
             
-            auto relabel = [&](int v)
+            auto relabel = [&](node_pos_t v)
             {
-                int hmin = INF;
-                for(int e : Graph.out_edges(v))
-                    if(valid_edge(e) && residual_cap.at(e)>0)
-                        hmin = std::min(hmin,distance.at(Graph.to_node(e)));
-                if(hmin<INF)    
+                int hmin = INFINITY;
+                for(auto e : g.out_arcs(v))
+                    if(valid_arc(e) && residual_cap.at(e)>0)
+                        hmin = std::min(hmin,distance.at(g.arc_ends(e).second));
+                if(hmin<INFINITY)    
                     distance.at(v) = hmin+1;
             };
             
-            auto discharge = [&](int a)
+            auto discharge = [&](node_pos_t a)
             {
                 while(true)
                 {
-                    for(int e : Graph.out_edges(a))
-                        if(valid_edge(e) && residual_cap.at(e)>0)
+                    for(auto e : g.out_arcs(a))
+                        if(valid_arc(e) && residual_cap.at(e)>0)
                         {
-                            int b = Graph.to_node(e);
+                            auto b = g.arc_ends(e).second;
                             if(distance[a]== distance[b]+1)
                                 push(e);
                         }
@@ -240,41 +267,25 @@ namespace ln
                 }
             };
             
-            excess.at(Source) = INF;
-            distance.at(Source) = Graph.n_vertex();
+            excess.at(Source) = INFINITY;
+            distance.at(Source) = g.num_nodes();
             
-            for(int e : Graph.out_edges(Source))
-                if(valid_edge(e))
+            for(auto e : g.out_arcs(Source))
+                if(valid_arc(e))
                     push(e);
             
             while(!q.empty())
             {
-                int a = q.front();
+                auto node = q.front();
                 q.pop();
                 
-                if(a!=Dest && a!=Source)
-                    discharge(a);
+                if(node!=Dest && node!=Source)
+                    discharge(node);
             }
             return excess.at(Dest);
         }
-        public:
-        maxflow_preflow(const digraph& in_graph):
-            network_flow_solver{in_graph},
-            distance(Graph.n_vertex()),
-            excess(Graph.n_vertex())
+        maxflow_preflow()
         {}
         
-        template<class condition_t>
-        int solve(
-            const int Source, const int Dest,
-            condition_t admissible)
-        {
-            return execute(Source,Dest,admissible);
-        }
-        int solve(
-            const int Source, const int Dest)
-        {
-            return execute(Source,Dest,[](int){return true;});
-        }
     };
 }
