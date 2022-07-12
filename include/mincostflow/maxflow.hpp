@@ -6,7 +6,7 @@ namespace ln
 {
     
     template<typename T>
-    class maxflow_type : public digraph_types
+    class maxflow_base : public digraph_types
     {
         public:
         using value_type = T;    
@@ -24,10 +24,10 @@ namespace ln
     };
 
     template<typename T, typename path_solver_type>
-    class maxflow_augmenting_path : public maxflow_type<T>
+    class maxflow_augmenting_path : public maxflow_base<T>
     {
         public:
-        using base_type = maxflow_type<T>;
+        using base_type = maxflow_base<T>;
         using value_type = typename base_type::value_type;    
         using node_pos_t = typename base_type::node_pos_t;
         using arc_pos_t = typename base_type::arc_pos_t;
@@ -84,10 +84,10 @@ namespace ln
     };
    
     template<typename T, typename path_solver_type>
-    class maxflow_scaling : public maxflow_type<T>
+    class maxflow_scaling : public maxflow_base<T>
     {
         public:
-        using base_type = maxflow_type<T>;
+        using base_type = maxflow_base<T>;
         using value_type = typename base_type::value_type;    
         using node_pos_t = typename base_type::node_pos_t;
         using arc_pos_t = typename base_type::arc_pos_t;
@@ -157,15 +157,18 @@ namespace ln
     
     
     template<typename T>
-    class maxflow_preflow : public maxflow_type<T>, public distance_structure<int>
+    class maxflow_preflow : public maxflow_base<T>, public distance_structure<int>
     {
         public:
-        using base_type = maxflow_type<T>;
+        using base_type = maxflow_base<T>;
         using value_type = typename base_type::value_type;    
         using node_pos_t = typename base_type::node_pos_t;
         using arc_pos_t = typename base_type::arc_pos_t;
         using base_type::flow_at;
         using base_type::INFINITY;
+        
+        static constexpr auto flow_INFINITY = base_type::INFINITY;
+        static constexpr auto dist_INFINITY = distance_structure<int>::INFINITY;
         
         std::vector<T> excess;
         
@@ -194,7 +197,7 @@ namespace ln
                     auto [a,b] = g.arc_ends(e);
                     int dnew = distance[b] + 1;
                     
-                    if(distance[a]==INFINITY)
+                    if(distance[a]==dist_INFINITY)
                     {
                         distance[a] = dnew;
                         q.push(a);
@@ -235,11 +238,11 @@ namespace ln
             
             auto relabel = [&](node_pos_t v)
             {
-                int hmin = INFINITY;
+                int hmin = dist_INFINITY;
                 for(auto e : g.out_arcs(v))
                     if(valid_arc(e) && residual_cap.at(e)>0)
                         hmin = std::min(hmin,distance.at(g.arc_ends(e).second));
-                if(hmin<INFINITY)    
+                if(hmin<dist_INFINITY)    
                     distance.at(v) = hmin+1;
             };
             
@@ -262,7 +265,7 @@ namespace ln
                 }
             };
             
-            excess.at(Source) = INFINITY;
+            excess.at(Source) = flow_INFINITY;
             distance.at(Source) = g.num_nodes();
             
             for(auto e : g.out_arcs(Source))

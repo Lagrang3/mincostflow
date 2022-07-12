@@ -5,10 +5,10 @@
 namespace ln
 {
     template<typename T, typename path_optimizer_type>
-    class mincostflow_EdmondsKarp : public maxflow_type<T>
+    class mincostflow_EdmondsKarp : public maxflow_base<T>
     {
         public:
-        using base_type = maxflow_type<T>;
+        using base_type = maxflow_base<T>;
         using value_type = typename base_type::value_type;    
         using node_pos_t = typename base_type::node_pos_t;
         using arc_pos_t = typename base_type::arc_pos_t;
@@ -65,65 +65,67 @@ namespace ln
     };
     
     
-    // TODO: 
     template<typename path_optimizer_type, typename maxflow_type>
-    class mincostflow_PrimalDual : 
-        public maxflow_type
+    class mincostflow_PrimalDual : public maxflow_type
     {
-        using maxflow_type::nedges;
-        using maxflow_type::dual;
-        using maxflow_type::Graph;
-        using maxflow_type::residual_cap;
-    
-        int execute(
-            const int Source, const int Dest,
-            const std::vector<int> weight)
+        public:
+        using base_type = maxflow_type;
+        using value_type = typename base_type::value_type;    
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
+        
+        
+        template<typename graph_t>
+        value_type solve(
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            const std::vector<value_type>& weight,
+                  std::vector<value_type>& residual_cap
+            )
         {   
-            std::vector<int> weight_ex(nedges*2);
+            std::vector<value_type> reduced_weight = weight;
             
-            for(int e=0;e<nedges;++e)
-            {
-                weight_ex.at(e) = weight.at(e);
-                weight_ex.at(dual(e)) = -weight.at(e);
-            } 
+            value_type sent =0 ;
+            path_optimizer_type path_opt;
             
-            int sent =0 ;
-            path_optimizer_type path_opt(Graph);
-            
-            // int cycle=0;
             while(true)
             {
-                bool found = path_opt.solve(
-                    Source,Dest,
-                    weight_ex,
+                path_opt.solve(
+                    g,
+                    Source,
+                    reduced_weight,
                     // edge is valid if
-                    [this](int e) -> bool
+                    [&residual_cap](arc_pos_t e) -> bool
                     {
                         return residual_cap.at(e)>0;
                     });
                     
-                if(!found)
+                if(! path_opt.is_reacheable(Dest))
                     break;
                     
                 const auto& distance{path_opt.distance};
                 
-                for(int e = 0 ;e<nedges;++e)
+                for(auto e : g.arcs())
                 {
-                    auto [a,b] = Graph.get_edge(e);
-                    if(distance[a]<INF && distance[b]<INF)
+                
+                    auto [a,b] = g.arc_ends(e);
+                    if(distance[a]<INFINITY && distance[b]<INFINITY)
                     {
-                        weight_ex[e]       += distance[a]-distance[b];
-                        weight_ex[dual(e)] -= distance[a]-distance[b];
+                        reduced_weight[e]       += distance[a]-distance[b];
                     }
                 }
                 
                 
-                int F = maxflow_type::solve(
+                auto F = base_type::solve(
+                    g,
                     Source,Dest,
+                    residual_cap,
                     // admissibility
-                    [weight_ex](int e)
+                    [&reduced_weight](arc_pos_t e)->bool
                     {
-                        return weight_ex[e]==0;
+                        return reduced_weight[e]==0;
                     });
                 
                 sent += F;
@@ -131,21 +133,8 @@ namespace ln
             return sent;
         }
         
-        public:
-        mincostflow_PrimalDual(const digraph& in_graph):
-            maxflow_type{in_graph}    
+        mincostflow_PrimalDual()
         {}
-        
-        int solve(
-            const int Source, const int Dest,
-            const std::vector<int> weight)
-        {
-            if(weight.size()!=nedges)
-                throw std::runtime_error(
-                    "send: weight.size() != "
-                    "number of edges");
-            return execute(Source,Dest,weight); 
-        }
     };
 
 }

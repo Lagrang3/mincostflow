@@ -5,20 +5,24 @@
 typedef long long value_type;
 
 typedef ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> maxflow_t;
-// typedef ln::maxflow_augmenting_path<ln::pathSearch_labeling> maxflow_t;
-// typedef ln::maxflow_scaling<ln::pathSearch_BFS> maxflow_t;
-// typedef ln::maxflow_scaling<ln::pathSearch_labeling> maxflow_t;
-// typedef ln::maxflow_preflow maxflow_t;
+// typedef ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> maxflow_t;
+// typedef ln::maxflow_scaling<value_type,ln::pathSearch_BFS> maxflow_t;
+// typedef ln::maxflow_scaling<value_type,ln::pathSearch_labeling> maxflow_t;
+// typedef ln::maxflow_preflow<value_type> maxflow_t;
 
-typedef ln::mincostflow_EdmondsKarp<
-    value_type,ln::shortestPath_FIFO<value_type>> mincostflow_t; // 2.18s
+//typedef ln::mincostflow_EdmondsKarp<
+//    value_type,ln::shortestPath_FIFO<value_type>> mincostflow_t; // 2.18s
 // typedef ln::mincostflow_EdmondsKarp<
 //     value_type,ln::shortestPath_BellmanFord<value_type>> mincostflow_t; // TLE
 // typedef ln::mincostflow_EdmondsKarp<ln::shortestPath_Dijkstra> mincostflow_t; // expected failure
 
-// typedef ln::mincostflow_PrimalDual<ln::shortestPath_FIFO,maxflow_t> mincostflow_t; // 0.95s, 1.11s, 1.18s, 1.38s, TLE
-// typedef ln::mincostflow_PrimalDual<ln::shortestPath_BellmanFord,maxflow_t> mincostflow_t; // 2.13s, 2.23s, 2.20s, 2.47s, TLE
-// typedef ln::mincostflow_PrimalDual<ln::shortestPath_Dijkstra,maxflow_t> mincostflow_t; // 0.63s, 0.74s, 0.87s, 1.07s, TLE
+// typedef ln::mincostflow_PrimalDual<
+//    ln::shortestPath_FIFO<value_type>,maxflow_t> mincostflow_t; // 2.54s, 3.02s, 2.75s, 3.18s, TLE
+// typedef ln::mincostflow_PrimalDual<
+//    ln::shortestPath_BellmanFord<value_type>,maxflow_t> mincostflow_t; // TLE
+typedef ln::mincostflow_PrimalDual<
+    ln::shortestPath_Dijkstra<value_type>,maxflow_t> mincostflow_t;
+// 1.34s, 1.76s, 1.52s, 2.42s, TLE
 
 int main()
 {
