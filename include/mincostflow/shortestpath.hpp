@@ -26,9 +26,13 @@ namespace ln
         public:
         std::vector<arc_pos_t> parent;
        
-        bool has_parent(node_pos_t x)
+        bool has_parent(node_pos_t x)const
         {
             return parent.at(x)!=arc_pos_t{NONE};
+        }
+        bool is_reacheable(node_pos_t x)const
+        {
+            return has_parent(x);
         }
         
         template<typename graph_t>
