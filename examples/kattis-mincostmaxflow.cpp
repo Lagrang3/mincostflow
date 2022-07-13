@@ -20,9 +20,13 @@ typedef ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> maxflow_t;
 //    ln::shortestPath_FIFO<value_type>,maxflow_t> mincostflow_t; // 2.54s, 3.02s, 2.75s, 3.18s, TLE
 // typedef ln::mincostflow_PrimalDual<
 //    ln::shortestPath_BellmanFord<value_type>,maxflow_t> mincostflow_t; // TLE
-typedef ln::mincostflow_PrimalDual<
-    ln::shortestPath_Dijkstra<value_type>,maxflow_t> mincostflow_t;
+//typedef ln::mincostflow_PrimalDual<
+//    ln::shortestPath_Dijkstra<value_type>,maxflow_t> mincostflow_t;
 // 1.34s, 1.76s, 1.52s, 2.42s, TLE
+
+typedef ln::mincostflow_capacityScaling<
+    ln::shortestPath_Dijkstra<value_type>,maxflow_t> mincostflow_t;
+// TLE
 
 int main()
 {

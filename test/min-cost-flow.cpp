@@ -155,6 +155,72 @@ int main()
         test< ln::mincostflow_PrimalDual<
                                           ln::shortestPath_Dijkstra<value_type>,
                                           ln::maxflow_preflow<value_type> >>();
+        
+        
+        
+        
+        
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_FIFO<value_type>,
+                                          ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_FIFO<value_type>,
+                                          ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_FIFO<value_type>,
+                                          ln::maxflow_scaling<value_type,ln::pathSearch_BFS> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_FIFO<value_type>,
+                                          ln::maxflow_scaling<value_type,ln::pathSearch_labeling> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_FIFO<value_type>,
+                                          ln::maxflow_preflow<value_type> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_BellmanFord<value_type>,
+                                          ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_BellmanFord<value_type>,
+                                          ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_BellmanFord<value_type>,
+                                          ln::maxflow_scaling<value_type,ln::pathSearch_BFS> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_BellmanFord<value_type>,
+                                          ln::maxflow_scaling<value_type,ln::pathSearch_labeling> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_BellmanFord<value_type>,
+                                          ln::maxflow_preflow<value_type> 
+                                               >> ();
+        
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_Dijkstra<value_type>,
+                                          ln::maxflow_augmenting_path<value_type,ln::pathSearch_BFS> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_Dijkstra<value_type>,
+                                          ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_Dijkstra<value_type>,
+                                          ln::maxflow_scaling<value_type,ln::pathSearch_BFS> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_Dijkstra<value_type>,
+                                          ln::maxflow_scaling<value_type,ln::pathSearch_labeling> 
+                                               >> ();
+        test< ln::mincostflow_capacityScaling< 
+                                          ln::shortestPath_Dijkstra<value_type>,
+                                          ln::maxflow_preflow<value_type> 
+                                               >> ();
     }catch(...)
     {
         return 1;
