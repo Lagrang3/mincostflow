@@ -1,52 +1,50 @@
 #pragma once
 
 #include <mincostflow/maxflow.hpp>
+#include <mincostflow/scope_guard.hpp>
 
 namespace ln
 {
-    template<typename base_network_flow>
-    class network_flow_cost_solver : public base_network_flow
+    template<typename T, typename path_optimizer_type>
+    class mincostflow_EdmondsKarp : public maxflow_base<T>
     {
         public:
+        using base_type = maxflow_base<T>;
+        using value_type = typename base_type::value_type;    
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
         
-        network_flow_cost_solver(const digraph& in_graph):
-            base_network_flow(in_graph)
-        {}
-    };
-    
-    template<typename path_optimizer_type>
-    class mincostflow_EdmondsKarp : public network_flow_solver
-    {
-        int execute(
-            const int Source, const int Dest,
-            const std::vector<int> weight)
+        template<typename graph_t>
+        value_type solve(
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            const std::vector<value_type>& weight,
+                  std::vector<value_type>& residual_cap
+            )
         // augmenting path
         {   
-            std::vector<int> weight_ex(nedges*2);
-            for(int e=0;e<nedges;++e)
-            {
-                weight_ex.at(e) = weight.at(e);
-                weight_ex.at(dual(e)) = -weight.at(e);
-            } 
-            int sent =0 ;
-            path_optimizer_type path_opt(Graph);
+            value_type sent =0 ;
+            path_optimizer_type path_opt;
             
             while(true)
             {
-                bool found = path_opt.solve(
-                    Source,Dest,
-                    weight_ex,
+                path_opt.solve(
+                    g,
+                    Source,
+                    weight,
                     // edge is valid if
-                    [this](int e){
+                    [&residual_cap](arc_pos_t e){
                         return residual_cap.at(e)>0;
                     });
                 
-                if(!found)
+                if(! path_opt.is_reacheable(Dest))
                     break;
                 
-                auto path = path_opt.get_path(Dest);
+                auto path = path_opt.get_path(g,Dest);
                 
-                int k = INF;
+                value_type k = INFINITY;
                 for(auto e : path)
                 {
                     k = std::min(k,residual_cap.at(e));
@@ -55,7 +53,7 @@ namespace ln
                 for(auto e: path)
                 {
                     residual_cap[e] -= k;
-                    residual_cap[dual(e)] += k;
+                    residual_cap[g.arc_dual(e)] += k;
                 } 
                 
                 sent += k;
@@ -63,83 +61,72 @@ namespace ln
             return sent;
         }
         
-        public:
-        mincostflow_EdmondsKarp(const digraph& in_graph):
-            network_flow_solver{in_graph}    
+        mincostflow_EdmondsKarp()
         {}
-    
-        int solve(
-            const int Source, const int Dest,
-            const std::vector<int> weight)
-        {
-            if(weight.size()!=nedges)
-                throw std::runtime_error(
-                    "send: weight.size() != "
-                    "number of edges");
-            return execute(Source,Dest,weight); 
-        }
     };
     
     
-    // TODO: 
     template<typename path_optimizer_type, typename maxflow_type>
-    class mincostflow_PrimalDual : 
-        public maxflow_type
+    class mincostflow_PrimalDual : public maxflow_type
     {
-        using maxflow_type::nedges;
-        using maxflow_type::dual;
-        using maxflow_type::Graph;
-        using maxflow_type::residual_cap;
-    
-        int execute(
-            const int Source, const int Dest,
-            const std::vector<int> weight)
+        public:
+        using base_type = maxflow_type;
+        using value_type = typename base_type::value_type;    
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
+        
+        
+        template<typename graph_t>
+        value_type solve(
+            const graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            const std::vector<value_type>& weight,
+                  std::vector<value_type>& residual_cap
+            )
         {   
-            std::vector<int> weight_ex(nedges*2);
+            std::vector<value_type> reduced_weight = weight;
             
-            for(int e=0;e<nedges;++e)
-            {
-                weight_ex.at(e) = weight.at(e);
-                weight_ex.at(dual(e)) = -weight.at(e);
-            } 
+            value_type sent =0 ;
+            path_optimizer_type path_opt;
             
-            int sent =0 ;
-            path_optimizer_type path_opt(Graph);
-            
-            // int cycle=0;
             while(true)
             {
-                bool found = path_opt.solve(
-                    Source,Dest,
-                    weight_ex,
+                path_opt.solve(
+                    g,
+                    Source,
+                    reduced_weight,
                     // edge is valid if
-                    [this](int e) -> bool
+                    [&residual_cap](arc_pos_t e) -> bool
                     {
                         return residual_cap.at(e)>0;
                     });
                     
-                if(!found)
+                if(! path_opt.is_reacheable(Dest))
                     break;
                     
                 const auto& distance{path_opt.distance};
                 
-                for(int e = 0 ;e<nedges;++e)
+                for(auto e : g.arcs())
                 {
-                    auto [a,b] = Graph.get_edge(e);
-                    if(distance[a]<INF && distance[b]<INF)
+                
+                    auto [a,b] = g.arc_ends(e);
+                    if(distance[a]<INFINITY && distance[b]<INFINITY)
                     {
-                        weight_ex[e]       += distance[a]-distance[b];
-                        weight_ex[dual(e)] -= distance[a]-distance[b];
+                        reduced_weight[e]       += distance[a]-distance[b];
                     }
                 }
                 
                 
-                int F = maxflow_type::solve(
+                auto F = base_type::solve(
+                    g,
                     Source,Dest,
+                    residual_cap,
                     // admissibility
-                    [weight_ex](int e)
+                    [&reduced_weight](arc_pos_t e)->bool
                     {
-                        return weight_ex[e]==0;
+                        return reduced_weight[e]==0;
                     });
                 
                 sent += F;
@@ -147,21 +134,216 @@ namespace ln
             return sent;
         }
         
-        public:
-        mincostflow_PrimalDual(const digraph& in_graph):
-            maxflow_type{in_graph}    
+        mincostflow_PrimalDual()
         {}
+    };
+    
+    template<typename path_optimizer_type, typename maxflow_type>
+    class mincostflow_capacityScaling : public maxflow_type
+    {
+        public:
+        using base_type = maxflow_type;
+        using value_type = typename base_type::value_type;
+        using node_pos_t = typename base_type::node_pos_t;
+        using arc_pos_t  = typename base_type::arc_pos_t;
+        using base_type::flow_at;
+        using base_type::INFINITY;
         
-        int solve(
-            const int Source, const int Dest,
-            const std::vector<int> weight)
+        template<typename graph_t>
+        value_type solve(
+            graph_t& g,
+            const node_pos_t Source, const node_pos_t Dest,
+            const std::vector<value_type>& weight,
+                  std::vector<value_type>& residual_cap)
         {
-            if(weight.size()!=nedges)
-                throw std::runtime_error(
-                    "send: weight.size() != "
-                    "number of edges");
-            return execute(Source,Dest,weight); 
+        
+            std::vector<value_type> reduced_weight = weight;
+            value_type maxflow{0};
+            
+            // find the max-flow-anycost
+            {
+                std::vector<value_type> copy_residual_cap = residual_cap;
+                maxflow = maxflow_type::solve(
+                    g,Source,Dest,
+                    copy_residual_cap,
+                    [](arc_pos_t)->bool{return true;});
+            }
+            value_type cap_flow = lower_bound_power2(maxflow);
+            
+            std::vector<value_type> excess(g.max_num_nodes(),0);
+            excess.at(Source) = maxflow;
+            excess.at(Dest) = -maxflow;
+            
+            
+            std::vector<value_type> potential(g.max_num_nodes(),0);
+            
+            std::vector<value_type> weight_ex = weight;
+            
+            auto update_reduced_costs = 
+                [&]()
+            {
+                for(auto e : g.arcs())
+                {
+                    auto [src,dst] = g.arc_ends(e);
+                    //auto w = 
+                    weight_ex.at(e) = 
+                    weight.at(e) - potential.at(dst) + potential.at(src);
+                    // weight_ex.at(g.arc_dual(e)) = -w;
+                }
+            };
+            
+            auto push_flow = 
+                [&](arc_pos_t e,value_type delta)
+            {
+                    // std::cerr << " push flow at " << e << " delta = " << delta << "\n";
+                    auto [src,dst] = g.arc_ends(e);
+                    
+                    residual_cap[e]-=delta;
+                    residual_cap[g.arc_dual(e)]+=delta;
+                    
+                    excess.at(src) -= delta;
+                    excess.at(dst) += delta;
+            };
+            
+            // auto report = 
+            // [&]()
+            // {
+            //     std::cerr << "residual cap + mod. costs\n";
+            //     for(int e=0;e<Graph.n_edges();++e)
+            //     {
+            //         std::cerr << " " << e << " -> " << residual_cap[e] << " " << weight_ex[e] << "\n";
+            //     }
+            //     std::cerr << "potential + excess\n";
+            //     for(int v=0;v<Graph.n_vertex();++v)
+            //     {
+            //         std::cerr << " " << v << " -> " << potential[v] << " " << excess[v] << "\n";
+            //     }
+            // };
+            
+            update_reduced_costs();
+            
+            // std::cerr << " maxflow = " << maxflow << "\n";
+            
+            // int cycle=0;
+            for(;cap_flow>0;cap_flow/=2)
+            {
+                //cycle++;
+                //std::cerr << "cycle " << cycle << " cap_flow = " << cap_flow << '\n';
+                //report();
+                
+                // saturate edges with negative cost
+                for(auto e : g.arcs()) 
+                while(residual_cap.at(e)>=cap_flow && weight_ex.at(e)<0)
+                {
+                    push_flow(e,cap_flow);
+                }
+                
+                path_optimizer_type path_opt;
+                
+                // build S and T
+                std::set<node_pos_t> Sset,Tset;
+                for(auto v : g.nodes())
+                {
+                    if(excess.at(v)>=cap_flow)
+                        Sset.insert(v);
+                    if(excess.at(v)<=-cap_flow)
+                        Tset.insert(v);
+                }
+                
+                while(!Sset.empty() && !Tset.empty())
+                { 
+                    // const auto src = *Sset.begin();
+                    // std::cerr << " pivot " << src << "\n";
+                    // 
+                    // report();
+                    {
+                        const auto multi_source_node = g.new_node();
+                        const Scope_guard rm_node = [&](){ g.erase(multi_source_node);};
+                        
+                        for(auto v : Sset)
+                        {
+                            auto arc1 = g.new_arc(multi_source_node,v);
+                            auto arc2 = g.new_arc(v,multi_source_node);
+                            
+                            weight_ex.resize(g.max_num_arcs());
+                            residual_cap.resize(g.max_num_arcs());
+                            
+                            weight_ex.at(arc1) = 0;
+                            residual_cap.at(arc1) = INFINITY;
+                            
+                            weight_ex.at(arc2) = 0;
+                            residual_cap.at(arc2) = 0;
+                        }
+                        
+                        
+                        // find and optimal weight_ex-distance
+                        path_opt.solve(
+                            g, multi_source_node,
+                            weight_ex,
+                            [cap_flow,&residual_cap](arc_pos_t e)->bool
+                            {
+                                return residual_cap.at(e)>=cap_flow;
+                            }
+                        );
+                    }
+                    //if(!found)
+                    //    throw std::runtime_error("mincostflow_capacityScaling: augmentation not found");
+                   
+                    const auto& distance{path_opt.distance};
+                    
+                    auto it = std::find_if(Tset.begin(),Tset.end(),
+                        [&](node_pos_t v)->bool {
+                            return distance.at(v)<INFINITY;
+                        });
+                    
+                    if(it==Tset.end())
+                        break;
+                    
+                    auto dst = *it;
+                    
+                    
+                    // std::cerr << " vertex distance to pivot\n";
+                    // for(int v=0;v<Graph.n_vertex();++v)
+                    // {
+                    //     std::cerr << " " <<v <<" -> " << distance[v]<<"\n";
+                    // }
+                    
+                    // relabel the potential
+                    for(auto v: g.nodes())
+                    if(distance.at(v)<INFINITY)
+                    {
+                        potential.at(v)+=distance[v];
+                    }
+                    
+                    update_reduced_costs();
+                    
+                    auto path = path_opt.get_path(g,dst);
+                    for(auto e: path)
+                    {
+                        push_flow(e,cap_flow);
+                    }
+                    
+                    // update S and T
+                    for(auto src : Sset)
+                    {
+                        if(excess.at(src)<cap_flow)
+                        {
+                            Sset.erase(src);
+                            break;
+                        }
+                    }
+                    
+                    if(excess.at(dst)>-cap_flow)
+                        Tset.erase(dst);
+                }
+            }
+            
+            return maxflow;
         }
+        
+        public:
+        mincostflow_capacityScaling()
+        {}
     };
 
 }
