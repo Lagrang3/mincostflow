@@ -12,7 +12,10 @@ libmincostflow = library('mincostflow',
     include_directories: my_includedir,
     install: true)
 
+dep_mincostflow = declare_dependency(link_with: libmincostflow,include_directories: my_includedir)
+
 install_headers(my_headers,subdir: 'mincostflow')
 
 subdir('test')
 subdir('examples')
+subdir('benchmark')

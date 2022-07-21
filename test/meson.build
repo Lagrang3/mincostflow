@@ -1,19 +1,15 @@
 test('Vectorized Map',
     executable('vec-map','vec-map.cpp',
-        include_directories: my_includedir,
-        link_with: libmincostflow))
+        dependencies: dep_mincostflow))
 
 test('Shortest Path',
     executable('short-path','short-path.cpp',
-        include_directories: my_includedir,
-        link_with: libmincostflow))
+        dependencies: dep_mincostflow))
 
 test('Max Flow',
     executable('max-flow','max-flow.cpp',
-        include_directories: my_includedir,
-        link_with: libmincostflow))
+        dependencies: dep_mincostflow))
 
 test('Min Cost Max Flow',
     executable('min-cost-flow','min-cost-flow.cpp',
-        include_directories: my_includedir,
-        link_with: libmincostflow))
+        dependencies: dep_mincostflow))
