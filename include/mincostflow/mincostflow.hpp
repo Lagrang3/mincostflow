@@ -185,8 +185,10 @@ namespace ln
                     auto [src,dst] = g.arc_ends(e);
                     auto p_src = potential.at(src), p_dst = potential.at(dst);
                     
-                    if(p_src<INFINITY && p_dst<INFINITY)
-                        weight_ex.at(e) +=  p_src - p_dst;
+                    p_src = p_src == INFINITY ? 0 : p_src;
+                    p_dst = p_dst == INFINITY ? 0 : p_dst;
+                    
+                    weight_ex.at(e) +=  p_src - p_dst;
                 }
             };
             
@@ -201,6 +203,8 @@ namespace ln
                     
                     excess.at(src) -= delta;
                     excess.at(dst) += delta;
+                    
+                    // std::cerr << "push " << delta << " over " << e << '\n';
             };
             
             // auto report = 
