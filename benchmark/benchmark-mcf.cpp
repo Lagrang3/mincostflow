@@ -242,7 +242,7 @@ int main()
     for(int e=0;e<M;++e)
     {
         int a,b,wei,cap;
-        std::cin>>a>>b>>wei>>cap;
+        std::cin>>a>>b>>cap>>wei;
         
         G.add_arc(a,b,e);
         
