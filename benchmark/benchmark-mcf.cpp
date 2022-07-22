@@ -275,7 +275,8 @@ int main()
         solve<
                 ln::mincostflow_capacityScaling< 
                     ln::shortestPath_Dijkstra<value_type>,
-                    ln::maxflow_preflow<value_type> >
+                    ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> 
+                    >
                 >(G,capacity,weight,S,T,"Capacity-scaling");
         auto [flow,cost] = check_constraints(G,ed_list,capacity,weight,S,T,N,M);
         assert(flow_0==flow && cost_0==cost);
