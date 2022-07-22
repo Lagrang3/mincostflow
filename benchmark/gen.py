@@ -15,7 +15,7 @@ def generate(n,m,mcap,mwei,f):
     for a,b in g.edges():
         print(a,b,random.choice(range(mcap)),random.choice(range(mwei)),file=f)
 
-def plot_data(series,outname):
+def plot_data(n_array,series,outname):
     fig = plt.figure()
     ax = fig.subplots()
     for x in series:
@@ -38,6 +38,11 @@ def read_data(filename):
     alldata = json.load(open(filename,'r'))
     return alldata['N'],alldata['series']
 
+def cat(fname):
+    f = open(fname,'r')
+    for l in f:
+        print(l,end='')
+
 def run_benchmark():
     n_array = [ 2**i for i in range(7,13)]
     m_array = [ int(n*7.5) for n in n_array ]
@@ -59,6 +64,7 @@ def run_benchmark():
             fname = tempfile.mktemp()
             with open(fname,'w') as fin:
                 generate(n,m,cap,cost,fin)
+            # cat(fname)
             p = subprocess.run(
                 ['./benchmark/benchmark-mcf'],
                 stdin=open(fname,'r'),capture_output=True)
@@ -76,4 +82,4 @@ if __name__ == "__main__":
     #n_array,series = read_data('latest.json')
     n_array,series = run_benchmark()
     save_data(n_array,series,'latest.json')
-    plot_data(series,'latest.png')
+    plot_data(n_array,series,'latest.png')
