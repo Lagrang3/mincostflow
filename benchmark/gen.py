@@ -5,6 +5,7 @@ import tempfile
 import numpy
 import subprocess
 import matplotlib.pyplot as plt
+import json
 
 def generate(n,m,mcap,mwei,f):
     S=0
@@ -14,7 +15,7 @@ def generate(n,m,mcap,mwei,f):
     for a,b in g.edges():
         print(a,b,random.choice(range(mcap)),random.choice(range(mwei)),file=f)
 
-def plot_data(series):
+def plot_data(series,outname):
     fig = plt.figure()
     ax = fig.subplots()
     for x in series:
@@ -22,9 +23,22 @@ def plot_data(series):
     ax.legend()
     ax.set_xlabel('N nodes')
     ax.set_ylabel('Time (micro seconds)')
-    fig.savefig('latest.png')
+    ax.grid()
+    fig.savefig(outname)
+    plt.show()
 
-if __name__ == "__main__":
+def save_data(n_array,series,outname):
+    alldata={'N' : n_array}
+    alldata['series']=dict()
+    for name in series:
+        alldata['series'][name]=[ int(x) for x in series[name] ]
+    json.dump(alldata,open(outname,'w'))
+
+def read_data(filename):
+    alldata = json.load(open(filename,'r'))
+    return alldata['N'],alldata['series']
+
+def run_benchmark():
     n_array = [ 2**i for i in range(7,13)]
     m_array = [ int(n*7.5) for n in n_array ]
     cost_arr = [ 200 ]*len(n_array)
@@ -56,5 +70,10 @@ if __name__ == "__main__":
                     series[name][i] = max(series[name][i],val)
                 except:
                     pass
-    print(series)
-    plot_data(series)
+    return n_array, series
+
+if __name__ == "__main__":
+    #n_array,series = read_data('latest.json')
+    n_array,series = run_benchmark()
+    save_data(n_array,series,'latest.json')
+    plot_data(series,'latest.png')
