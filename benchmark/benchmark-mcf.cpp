@@ -263,7 +263,8 @@ int main()
         solve<
                 ln::mincostflow_PrimalDual<
                     ln::shortestPath_Dijkstra<value_type>,
-                    ln::maxflow_preflow<value_type> >
+                    ln::maxflow_augmenting_path<value_type,ln::pathSearch_labeling> 
+                    >
                 >(G,capacity,weight,S,T,"Primal-dual");
         auto [flow,cost] = check_constraints(G,ed_list,capacity,weight,S,T,N,M);
         
