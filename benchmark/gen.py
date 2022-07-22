@@ -1,6 +1,6 @@
 import networkx 
 import random
-import sys
+import sys,os
 import tempfile
 import numpy
 import subprocess
@@ -43,6 +43,14 @@ def cat(fname):
     for l in f:
         print(l,end='')
 
+class TmpFile():
+    def __init__(self):
+        self.name = tempfile.mktemp()
+    def __enter__(self):
+        return self
+    def __exit__(self,exc_type,exc_value,exc_traceback):
+        os.remove(self.name)
+
 def run_benchmark():
     n_array = [ 2**i for i in range(7,13)]
     m_array = [ int(n*7.5) for n in n_array ]
@@ -61,21 +69,27 @@ def run_benchmark():
         print("N nodes = ",n)        
         for j in range(rep_arr[i]):
             print("   rep = ",j)
-            fname = tempfile.mktemp()
-            with open(fname,'w') as fin:
-                generate(n,m,cap,cost,fin)
-            # cat(fname)
-            p = subprocess.run(
-                ['./benchmark/benchmark-mcf'],
-                stdin=open(fname,'r'),capture_output=True)
-            data = p.stdout.decode().split('\n')
-            for d in data:
-                try:
-                    name,val = d.split()
-                    val = int(val)
-                    series[name][i] = max(series[name][i],val)
-                except:
-                    pass
+            with TmpFile() as tmp:
+                with open(tmp.name,'w') as fin:
+                    generate(n,m,cap,cost,fin)
+                # cat(tmp.name)
+                p = subprocess.run(
+                    ['./benchmark/benchmark-mcf'],
+                    stdin=open(tmp.name,'r'),capture_output=True)
+                    
+                data = p.stdout.decode().split('\n')
+                if p.returncode!=0: 
+                    print(p.stderr.decode())
+                    print("on test case")
+                    cat(tmp.name)
+                    raise "benchmark failed"
+                for d in data:
+                    try:
+                        name,val = d.split()
+                        val = int(val)
+                        series[name][i] = max(series[name][i],val)
+                    except:
+                        pass
     return n_array, series
 
 if __name__ == "__main__":
