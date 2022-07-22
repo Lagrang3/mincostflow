@@ -146,9 +146,8 @@ std::pair<value_type,value_type> solve_ortools(
    
    auto stop = std::chrono::high_resolution_clock::now();
     
-    std::cout << tname << ", runtime = " <<
-    std::chrono::duration_cast<std::chrono::milliseconds>(stop-start) .count()
-    << " ms"
+    std::cout << tname << " " <<
+    std::chrono::duration_cast<std::chrono::microseconds>(stop-start) .count()
     << std::endl;
     
     return {Flow,Cost};
@@ -173,9 +172,8 @@ void solve(integer_graph& G,
     f.solve(graph,graph.get_node(S),graph.get_node(T),G.weight,G.capacity);
     auto stop = std::chrono::high_resolution_clock::now();
     
-    std::cout << tname << ", runtime = " <<
-    std::chrono::duration_cast<std::chrono::milliseconds>(stop-start) .count()
-    << " ms"
+    std::cout << tname << " " <<
+    std::chrono::duration_cast<std::chrono::microseconds>(stop-start) .count()
     << std::endl;
 }
 
@@ -266,7 +264,7 @@ int main()
                 ln::mincostflow_PrimalDual<
                     ln::shortestPath_Dijkstra<value_type>,
                     ln::maxflow_preflow<value_type> >
-                >(G,capacity,weight,S,T,"Primal dual");
+                >(G,capacity,weight,S,T,"Primal-dual");
         auto [flow,cost] = check_constraints(G,ed_list,capacity,weight,S,T,N,M);
         
         assert(flow_0==flow && cost_0==cost);
@@ -277,7 +275,7 @@ int main()
                 ln::mincostflow_capacityScaling< 
                     ln::shortestPath_Dijkstra<value_type>,
                     ln::maxflow_preflow<value_type> >
-                >(G,capacity,weight,S,T,"Capacity scaling");
+                >(G,capacity,weight,S,T,"Capacity-scaling");
         auto [flow,cost] = check_constraints(G,ed_list,capacity,weight,S,T,N,M);
         assert(flow_0==flow && cost_0==cost);
     }
