@@ -175,20 +175,20 @@ namespace ln
             excess.at(Dest) = -maxflow;
             
             
-            std::vector<value_type> potential(g.max_num_nodes(),0);
-            
             std::vector<value_type> weight_ex = weight;
             
             auto update_reduced_costs = 
-                [&]()
+                [&](const std::vector<value_type>& potential)
             {
                 for(auto e : g.arcs())
                 {
                     auto [src,dst] = g.arc_ends(e);
-                    //auto w = 
-                    weight_ex.at(e) = 
-                    weight.at(e) - potential.at(dst) + potential.at(src);
-                    // weight_ex.at(g.arc_dual(e)) = -w;
+                    auto p_src = potential.at(src), p_dst = potential.at(dst);
+                    
+                    p_src = p_src == INFINITY ? 0 : p_src;
+                    p_dst = p_dst == INFINITY ? 0 : p_dst;
+                    
+                    weight_ex.at(e) +=  p_src - p_dst;
                 }
             };
             
@@ -203,33 +203,33 @@ namespace ln
                     
                     excess.at(src) -= delta;
                     excess.at(dst) += delta;
+                    
+                    // std::cerr << "push " << delta << " over " << e << '\n';
             };
             
             // auto report = 
             // [&]()
             // {
             //     std::cerr << "residual cap + mod. costs\n";
-            //     for(int e=0;e<Graph.n_edges();++e)
+            //     for(auto e : g.arcs())
             //     {
             //         std::cerr << " " << e << " -> " << residual_cap[e] << " " << weight_ex[e] << "\n";
             //     }
             //     std::cerr << "potential + excess\n";
-            //     for(int v=0;v<Graph.n_vertex();++v)
+            //     for(auto v : g.nodes())
             //     {
-            //         std::cerr << " " << v << " -> " << potential[v] << " " << excess[v] << "\n";
+            //         std::cerr << " " << v << " -> " << excess[v] << "\n";
             //     }
             // };
-            
-            update_reduced_costs();
-            
+            // 
             // std::cerr << " maxflow = " << maxflow << "\n";
             
             // int cycle=0;
             for(;cap_flow>0;cap_flow/=2)
             {
-                //cycle++;
-                //std::cerr << "cycle " << cycle << " cap_flow = " << cap_flow << '\n';
-                //report();
+                // cycle++;
+                // std::cerr << "cycle " << cycle << " cap_flow = " << cap_flow << '\n';
+                // report();
                 
                 // saturate edges with negative cost
                 for(auto e : g.arcs()) 
@@ -250,45 +250,53 @@ namespace ln
                         Tset.insert(v);
                 }
                 
+                const auto multi_source_node = g.new_node();
+                excess.resize(g.max_num_nodes());
+                excess.at(multi_source_node) = 0;
+                const Scope_guard rm_node = [&](){ g.erase(multi_source_node);};
+                
+                
+                
+                for(auto v : Sset)
+                {
+                    auto arc1 = g.new_arc(multi_source_node,v);
+                    auto arc2 = g.new_arc(v,multi_source_node);
+                    
+                    g.set_dual(arc1,arc2);
+                    
+                    weight_ex.resize(g.max_num_arcs());
+                    residual_cap.resize(g.max_num_arcs());
+                    
+                    weight_ex.at(arc1) = 0;
+                    residual_cap.at(arc1) = excess.at(v);
+                    
+                    weight_ex.at(arc2) = 0;
+                    residual_cap.at(arc2) = 0;
+                    
+                    excess.at(multi_source_node) += excess.at(v);
+                    excess.at(v) = 0;
+                }
+                
+                const Scope_guard restore_excess = [&]()
+                {
+                    for(auto e : g.out_arcs(multi_source_node))
+                    {
+                        auto [src,dst] = g.arc_ends(e);
+                        excess.at(dst) = residual_cap.at(e);
+                    }
+                };
+                
                 while(!Sset.empty() && !Tset.empty())
                 { 
-                    // const auto src = *Sset.begin();
-                    // std::cerr << " pivot " << src << "\n";
-                    // 
-                    // report();
-                    {
-                        const auto multi_source_node = g.new_node();
-                        const Scope_guard rm_node = [&](){ g.erase(multi_source_node);};
-                        
-                        for(auto v : Sset)
+                    path_opt.solve(
+                        g, multi_source_node,
+                        weight_ex,
+                        [cap_flow,&residual_cap](arc_pos_t e)->bool
                         {
-                            auto arc1 = g.new_arc(multi_source_node,v);
-                            auto arc2 = g.new_arc(v,multi_source_node);
-                            
-                            weight_ex.resize(g.max_num_arcs());
-                            residual_cap.resize(g.max_num_arcs());
-                            
-                            weight_ex.at(arc1) = 0;
-                            residual_cap.at(arc1) = INFINITY;
-                            
-                            weight_ex.at(arc2) = 0;
-                            residual_cap.at(arc2) = 0;
+                            return residual_cap.at(e)>=cap_flow;
                         }
-                        
-                        
-                        // find and optimal weight_ex-distance
-                        path_opt.solve(
-                            g, multi_source_node,
-                            weight_ex,
-                            [cap_flow,&residual_cap](arc_pos_t e)->bool
-                            {
-                                return residual_cap.at(e)>=cap_flow;
-                            }
-                        );
-                    }
-                    //if(!found)
-                    //    throw std::runtime_error("mincostflow_capacityScaling: augmentation not found");
-                   
+                    );
+                    
                     const auto& distance{path_opt.distance};
                     
                     auto it = std::find_if(Tset.begin(),Tset.end(),
@@ -308,29 +316,13 @@ namespace ln
                     //     std::cerr << " " <<v <<" -> " << distance[v]<<"\n";
                     // }
                     
-                    // relabel the potential
-                    for(auto v: g.nodes())
-                    if(distance.at(v)<INFINITY)
-                    {
-                        potential.at(v)+=distance[v];
-                    }
-                    
-                    update_reduced_costs();
+                    update_reduced_costs(distance);
                     
                     auto path = path_opt.get_path(g,dst);
                     for(auto e: path)
                     {
+                        // auto [src,dst] = g.arc_ends(e);
                         push_flow(e,cap_flow);
-                    }
-                    
-                    // update S and T
-                    for(auto src : Sset)
-                    {
-                        if(excess.at(src)<cap_flow)
-                        {
-                            Sset.erase(src);
-                            break;
-                        }
                     }
                     
                     if(excess.at(dst)>-cap_flow)

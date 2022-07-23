@@ -85,6 +85,29 @@ void test()
         
         test_case<pathsolver_t>(arc,capacity,weight,source,sink,flow);
     }
+    {
+        // case 4
+        int source = 0;
+        int sink = 1;
+        std::vector<int> flow{0,4,1,0,0,1,1,0};
+        std::vector< std::pair<int,int> > arc{{0,2},{0,1},{0,3},{1,3},{2,3},{2,1},{3,2},{3,0}};
+        std::vector<int> capacity{2,4,3,3,3,1,1,4};
+        std::vector<int> weight{2,3,1,0,2,0,0,4};
+        
+        test_case<pathsolver_t>(arc,capacity,weight,source,sink,flow);
+    }
+    {
+        // case 5
+        int source = 0;
+        int sink = 1;
+        std::vector<int> flow{1,1,0,0,1,2};
+        std::vector< std::pair<int,int> > arc{{0,3},{0,2},{1,2},{1,0},{2,3},{3,1}};
+        std::vector<int> capacity{2,1,1,1,4,2};
+        std::vector<int> weight{4,1,0,1,2,0};
+        
+        test_case<pathsolver_t>(arc,capacity,weight,source,sink,flow);
+        
+    }
 }
 
 int main()

@@ -194,6 +194,18 @@ namespace ln
             return my_arcs.at(arc).dual;
         }
         
+        auto arc_ends_nocheck(arc_pos_t arc)const noexcept
+        {
+            return std::pair<node_pos_t,node_pos_t>{
+                my_arcs[arc].a,
+                my_arcs[arc].b
+                };
+        }
+        arc_pos_t arc_dual_nocheck(arc_pos_t arc)const noexcept
+        {
+            return my_arcs[arc].dual;
+        }
+        
         void erase(arc_pos_t arc)
         {
             if(! is_valid(arc))
